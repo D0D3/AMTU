@@ -8,6 +8,7 @@ Un outil pour mettre à jour automatiquement les tags des fichiers MP3.
 
 # Imports standards
 from typing import Dict, List, Optional, Tuple, Any
+import re
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkinterdnd2 import *  # Pour le drag & drop
@@ -669,6 +670,29 @@ class MP3Processor:
                         updated = True
                         self.update_summary['catalog_updates'] += 1
                         self.update_summary['catalogs_found'].add(metadata.catalog_number)
+
+                # Nettoyer le titre de l'album
+                current_album = existing_metadata['album']
+                new_album = current_album
+
+                # Supprime le suffixe "- Single" avec différentes variations possibles
+                single_patterns = [
+                    r'\s*-\s*Single\s*$',  # "- Single" à la fin
+                    r'\s*\(Single\)\s*$',   # "(Single)" à la fin
+                    r'\s*-\s*single\s*$',   # "- single" à la fin (casse différente)
+                    r'\s*\(single\)\s*$'    # "(single)" à la fin (casse différente)
+                ]
+
+                for pattern in single_patterns:
+                    new_album = re.sub(pattern, '', new_album, flags=re.IGNORECASE)
+
+                new_album = new_album.strip()
+
+                if new_album != current_album:
+                    audio['TALB'] = TALB(encoding=3, text=[new_album])
+                    logger.info(f"Album nettoyé: '{current_album}' → '{new_album}'")
+                    updated = True
+                    existing_metadata['album'] = new_album
 
                 # Mise à jour de l'artiste de l'album (Band)
                 if metadata.artist:
