@@ -1,8 +1,20 @@
 # AMTU (Apple Music Tag Updater)
 
-AMTU est un outil graphique Python permettant de mettre à jour automatiquement les tags des fichiers MP3 en utilisant plusieurs sources de données musicales (MusicBrainz, Spotify, Discogs).
+AMTU est un outil graphique Python permettant de mettre à jour automatiquement les tags des fichiers MP3 en utilisant plusieurs sources de données musicales (MusicBrainz, Spotify, Discogs) pour une meilleure organisation de votre bibliothèque Apple Music.
 
-## 🌟 Fonctionnalités
+⚠️ **Important**: Cet outil est conçu uniquement pour les fichiers MP3 que vous possédez légalement (achetés ou téléchargés) destinée a l'organisation via la bibliothèque Apple Music. Il n'est pas compatible avec les morceaux streamés ou faisant partie d'un service d'abonnement Apple Music ou autres. AMTU est destiné à l'organisation et à la gestion de votre bibliothèque musicale personnelle dans Apple Music, en améliorant spécifiquement les métadonnées pour une meilleure expérience avec l'application.
+
+## 🌟 Fonctionnalités Principales
+
+- **Optimisation pour Apple Music** :
+  - Mise à jour de l'artiste d'album pour un meilleur regroupement des albums dans Apple Music
+  - Nettoyage automatique des noms d'albums (suppression du suffixe "- Single")
+  - Organisation intelligente de la bibliothèque pour une meilleure expérience visuelle
+
+- **Enrichissement des métadonnées** :
+  - Label (stocké dans le champ Composer)
+  - Numéro de catalogue (stocké dans le champ Grouping)
+  - Artiste de l'album (stocké dans le champ Band)
 
 - Interface graphique conviviale avec support du drag & drop
 - Recherche multi-sources (MusicBrainz, Spotify, Discogs)
@@ -28,7 +40,7 @@ AMTU est un outil graphique Python permettant de mettre à jour automatiquement 
   - musicbrainzngs
   - requests
 
-## 📦 Installation
+## 📦 Installation et Configuration des APIs
 
 1. Clonez le repository :
 ```bash
@@ -41,7 +53,21 @@ cd AMTU
 pip install -r requirements.txt
 ```
 
-3. Créez un fichier `api_keys.json` avec vos clés d'API :
+3. Configuration des APIs :
+
+- **MusicBrainz** : Pas de configuration nécessaire (activé par défaut)
+
+- **Spotify API** [(Créer une app)](https://developer.spotify.com/dashboard) :
+  - Créez un compte développeur Spotify
+  - Créez une nouvelle application
+  - Récupérez vos `client_id` et `client_secret`
+
+- **Discogs API** [(Créer un token)](https://www.discogs.com/settings/developers) :
+  - Créez un compte Discogs
+  - Allez dans les paramètres développeur
+  - Générez un nouveau token personnel
+
+4. Créez un fichier `api_keys.json` avec vos clés d'API :
 ```json
 {
     "spotify": {
@@ -94,4 +120,3 @@ Les contributions sont les bienvenues ! N'hésitez pas à :
 ## 📄 Licence
 
 Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
-
