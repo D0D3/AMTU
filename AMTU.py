@@ -200,81 +200,102 @@ class APIManager:
 
     def search_track(self, title: str, artist: str, retries: int = 3) -> List[TrackMetadata]:
         """Recherche les métadonnées avec plusieurs tentatives en cas d'échec."""
+        logger.info(f"Début de la recherche pour {title} - {artist}")
         for attempt in range(retries):
             try:
-                return self._execute_search(title, artist)
+                results = self._execute_search(title, artist)
+                if results:
+                    return results
             except Exception as e:
                 logger.warning(f"Tentative {attempt + 1}/{retries} échouée : {e}")
                 if attempt == retries - 1:
+                    logger.error(f"Échec de toutes les tentatives pour {title} - {artist}")
                     raise
                 time.sleep(1)
         return []
 
     def _execute_search(self, title: str, artist: str) -> List[TrackMetadata]:
         """Exécute la recherche sur les APIs activées."""
-        all_results = []
+        best_result = None
         enabled_services = self.config.get('services', {})
 
-        api_order = [
+        for service_name, search_func, display_name in [
             ('musicbrainz', self._search_musicbrainz, "MusicBrainz"),
             ('spotify', self._search_spotify, "Spotify"),
             ('discogs', self._search_discogs, "Discogs")
-        ]
+        ]:
+            if not enabled_services.get(service_name, False):
+                continue
 
-        for service_name, search_func, display_name in api_order:
-            if enabled_services.get(service_name, False):
-                logger.info(f"Recherche sur {display_name}...")
+            logger.info(f"Recherche sur {display_name}...")
+            try:
                 results = search_func(title, artist)
 
-                if results:
-                    logger.info(f"Résultats trouvés sur {display_name}: {len(results)}")
-                    for result in results:
-                        if result.label or result.catalog_number:
-                            logger.info(f"Information trouvée sur {display_name}")
-                            return results
+                if not results:
+                    continue
 
-                    all_results.extend(results)
+                logger.info(f"Résultats trouvés sur {display_name}: {len(results)}")
 
-        return [max(all_results, key=lambda x: x.confidence)] if all_results else []
-    def _search_spotify(self, title: str, artist: str) -> List[TrackMetadata]:
-            results = []
-            query = f"track:\"{title}\" artist:\"{artist}\""
+                # Trouve le meilleur résultat pour ce service
+                current_best = max(results, key=lambda x: x.confidence)
 
-            try:
-                search_results = self.spotify.search(query, type='track', limit=5)
-
-                if 'tracks' in search_results and 'items' in search_results['tracks']:
-                    for track in search_results['tracks']['items']:
-                        album = track['album']
-                        confidence = self._calculate_confidence(
-                            title, artist,
-                            track['name'], track['artists'][0]['name']
-                        )
-
-                        # Récupération des détails de l'album
-                        album_detail = self.spotify.album(album['id'])
-                        label = album_detail.get('label')
-
-                        logger.info(f"Spotify - Détails album - Titre: {album_detail.get('name')}, Label: {label}")
-
-                        metadata = TrackMetadata(
-                            title=track['name'],
-                            artist=track['artists'][0]['name'],
-                            album=album['name'],
-                            label=label,
-                            confidence=confidence,
-                            source="Spotify"
-                        )
-                        results.append(metadata)
-
-                logger.info(f"Spotify - Nombre de résultats: {len(results)}")
-                for result in results:
-                    logger.info(f"Spotify - Résultat: Label={result.label}, Album={result.album}")
+                if current_best.label:  # On vérifie seulement la présence du label
+                    # Si c'est notre premier résultat valide ou s'il est meilleur que le précédent
+                    if not best_result or current_best.confidence > best_result.confidence:
+                        best_result = current_best
+                        logger.info(f"Nouveau meilleur résultat trouvé sur {display_name} "
+                                  f"(confiance: {current_best.confidence}%)")
 
             except Exception as e:
-                logger.error(f"Erreur Spotify: {e}")
+                logger.warning(f"Erreur lors de la recherche sur {display_name}: {e}")
+                continue
 
-            return results
+        if best_result:
+            logger.info(f"Meilleur résultat final : {best_result.source} "
+                       f"(confiance: {best_result.confidence}%)")
+            return [best_result]
+
+        logger.info("Aucun résultat valide trouvé")
+        return []
+
+    def _search_spotify(self, title: str, artist: str) -> List[TrackMetadata]:
+        results = []
+        query = f"track:\"{title}\" artist:\"{artist}\""
+
+        try:
+            search_results = self.spotify.search(query, type='track', limit=5)
+
+            if 'tracks' in search_results and 'items' in search_results['tracks']:
+                for track in search_results['tracks']['items']:
+                    album = track['album']
+                    confidence = self._calculate_confidence(
+                        title, artist,
+                        track['name'], track['artists'][0]['name']
+                    )
+
+                    album_detail = self.spotify.album(album['id'])
+                    label = album_detail.get('label')
+
+                    logger.info(f"Spotify - Détails album - Titre: {album_detail.get('name')}, Label: {label}")
+
+                    metadata = TrackMetadata(
+                        title=track['name'],
+                        artist=track['artists'][0]['name'],
+                        album=album['name'],
+                        label=label,
+                        confidence=confidence,
+                        source="Spotify"
+                    )
+                    results.append(metadata)
+
+            logger.info(f"Spotify - Nombre de résultats: {len(results)}")
+            for result in results:
+                logger.info(f"Spotify - Résultat: Label={result.label}, Album={result.album}")
+
+        except Exception as e:
+            logger.error(f"Erreur Spotify: {e}")
+
+        return results
 
     def _search_discogs(self, title: str, artist: str) -> List[TrackMetadata]:
         results = []
@@ -536,69 +557,44 @@ class MP3Processor:
         return grouped
 
     def _get_album_metadata(self, file_path: Path, progress_callback) -> Optional[TrackMetadata]:
-            """Obtient les métadonnées pour un album entier à partir d'un fichier."""
-            current_metadata = self._read_metadata(file_path)
+        """Obtient les métadonnées pour un album entier à partir d'un fichier."""
+        current_metadata = self._read_metadata(file_path)
 
-            if not current_metadata or not (current_metadata.title and current_metadata.artist):
-                if progress_callback:
-                    progress_callback(None, "    └─ ⚠️ Métadonnées manquantes ou incomplètes")
-                return None
-
+        if not current_metadata or not (current_metadata.title and current_metadata.artist):
             if progress_callback:
-                progress_callback(
-                    None,
-                    f"    └─ Recherche pour '{current_metadata.title}' - {current_metadata.artist}..."
-                )
+                progress_callback(None, "    └─ ⚠️ Métadonnées manquantes ou incomplètes")
+            return None
 
-            # Délai pour éviter de surcharger les APIs
-            time.sleep(0.5)
+        if progress_callback:
+            progress_callback(None, f"    └─ Recherche pour '{current_metadata.title}' - {current_metadata.artist}...")
 
-            api_results = self.api_manager.search_track(
-                current_metadata.title,
-                current_metadata.artist
-            )
+        # Délai pour éviter de surcharger les APIs
+        time.sleep(0.5)
 
-            if not api_results:
-                if progress_callback:
-                    progress_callback(None, "    └─ ❌ Aucun résultat trouvé")
-                return None
+        api_results = self.api_manager.search_track(current_metadata.title, current_metadata.artist)
 
-            best_match = api_results[0]
-
-            # Logs détaillés des résultats
+        if not api_results:
             if progress_callback:
-                progress_callback(
-                    None,
-                    f"    └─ Meilleure correspondance ({best_match.source}): {best_match.confidence:.1f}%"
-                )
-                progress_callback(
-                    None,
-                    f"    └─ Détails du résultat:"
-                )
-                progress_callback(
-                    None,
-                    f"       • Titre: {best_match.title}"
-                )
-                progress_callback(
-                    None,
-                    f"       • Artiste: {best_match.artist}"
-                )
-                progress_callback(
-                    None,
-                    f"       • Album: {best_match.album}"
-                )
-                progress_callback(
-                    None,
-                    f"       • Label: {best_match.label if best_match.label else 'Non trouvé'}"
-                )
-                progress_callback(
-                    None,
-                    f"       • No Catalogue: {best_match.catalog_number if best_match.catalog_number else 'Non trouvé'}"
-                )
+                progress_callback(None, "    └─ ❌ Aucun résultat trouvé")
+            return None
 
-            return best_match if best_match.confidence >= 80 else None
+        best_match = api_results[0]
 
+        if progress_callback:
+            progress_callback(None, f"    └─ Meilleure correspondance ({best_match.source}): {best_match.confidence:.1f}%")
+            progress_callback(None, f"    └─ Label : {best_match.label if best_match.label else 'Non trouvé'}")
 
+        # Simplifie la condition de validation
+        if best_match.confidence >= 60:
+            if best_match.label:
+                logger.info(f"Résultat accepté - Score: {best_match.confidence}, Label: {best_match.label}")
+                return best_match
+            else:
+                logger.info("Résultat rejeté - Pas de label trouvé")
+        else:
+            logger.info(f"Résultat rejeté - Score trop faible: {best_match.confidence}")
+
+        return None
 
     def _log_error(self, file_path: Path, error_message: str) -> None:
         """Enregistre une erreur dans le fichier CSV."""
@@ -790,60 +786,63 @@ class MP3Processor:
         self.processing_canceled = True
 
     def _get_album_metadata(self, file_path: Path, progress_callback) -> Optional[TrackMetadata]:
-            """Obtient les métadonnées pour un album entier à partir d'un fichier."""
-            current_metadata = self._read_metadata(file_path)
+        """Obtient les métadonnées pour un album entier à partir d'un fichier."""
+        current_metadata = self._read_metadata(file_path)
 
-            if not current_metadata or not (current_metadata.title and current_metadata.artist):
-                if progress_callback:
-                    progress_callback(None, "    └─ ⚠️ Métadonnées manquantes ou incomplètes")
-                return None
-
+        if not current_metadata or not (current_metadata.title and current_metadata.artist):
             if progress_callback:
-                progress_callback(
-                    None,
-                    f"    └─ Recherche pour '{current_metadata.title}' - {current_metadata.artist}..."
-                )
+                progress_callback(None, "    └─ ⚠️ Métadonnées manquantes ou incomplètes")
+            return None
 
-            # Délai pour éviter de surcharger les APIs
-            time.sleep(0.5)
-
-            api_results = self.api_manager.search_track(
-                current_metadata.title,
-                current_metadata.artist
+        if progress_callback:
+            progress_callback(
+                None,
+                f"    └─ Recherche pour '{current_metadata.title}' - {current_metadata.artist}..."
             )
 
-            if not api_results:
-                if progress_callback:
-                    progress_callback(None, "    └─ ❌ Aucun résultat trouvé")
-                return None
+        # Délai pour éviter de surcharger les APIs
+        time.sleep(0.5)
 
-            best_match = api_results[0]
+        api_results = self.api_manager.search_track(
+            current_metadata.title,
+            current_metadata.artist
+        )
 
+        if not api_results:
             if progress_callback:
-                progress_callback(
-                    None,
-                    f"    └─ Meilleure correspondance ({best_match.source}): {best_match.confidence:.1f}%"
-                )
-                progress_callback(
-                    None,
-                    f"    └─ Label : {best_match.label if best_match.label else 'Non trouvé'}"
-                )
-                progress_callback(
-                    None,
-                    f"    └─ No Catalogue : {best_match.catalog_number if best_match.catalog_number else 'Non trouvé'}"
-                )
+                progress_callback(None, "    └─ ❌ Aucun résultat trouvé")
+            return None
 
-            # Accepter les résultats avec un score de confiance > 60%
-            # si le label et le numéro de catalogue sont présents
-            should_use_result = (best_match.confidence >= 60 and
-                               best_match.label and
-                               best_match.catalog_number)
+        best_match = api_results[0]
 
-            if should_use_result:
-                return best_match
-            else:
-                logger.info(f"Résultat ignoré - Score: {best_match.confidence}, Label: {bool(best_match.label)}, Catalogue: {bool(best_match.catalog_number)}")
-                return None
+        if progress_callback:
+            progress_callback(
+                None,
+                f"    └─ Meilleure correspondance ({best_match.source}): {best_match.confidence:.1f}%"
+            )
+            progress_callback(
+                None,
+                f"    └─ Label : {best_match.label if best_match.label else 'Non trouvé'}"
+            )
+            progress_callback(
+                None,
+                f"    └─ No Catalogue : {best_match.catalog_number if best_match.catalog_number else 'Non trouvé'}"
+            )
+
+        # Modification de la condition pour accepter les résultats avec au moins un label
+        should_use_result = (best_match.confidence >= 60 and best_match.label)
+
+        # Log détaillé pour le débogage
+        logger.info(f"Évaluation du résultat - Score: {best_match.confidence}, "
+                   f"Label: {best_match.label}, "
+                   f"Catalogue: {best_match.catalog_number}")
+
+        if should_use_result:
+            logger.info("Résultat accepté - Label trouvé avec score suffisant")
+            return best_match
+        else:
+            logger.info(f"Résultat ignoré - Score insuffisant ou pas de label")
+            return None
 
     def process_directory(self, directory: Path, progress_callback=None) -> None:
         """Traite tous les fichiers MP3 dans un dossier et ses sous-dossiers."""
@@ -859,11 +858,8 @@ class MP3Processor:
             if progress_callback:
                 progress_callback(0, f"🔍 Analyse des fichiers - {total_files} fichiers trouvés")
 
-            # Réinitialiser les listes
             self.error_records = []
             self.not_found_records = []
-
-            # Regroupement des fichiers par album
             grouped_files = self.group_files_by_album(mp3_files, progress_callback)
 
             processed_count = 0
@@ -879,21 +875,31 @@ class MP3Processor:
                 first_file = files[0]
                 try:
                     metadata = self._get_album_metadata(first_file, progress_callback)
-                    if metadata and metadata.confidence >= 80:
+
+                    # Vérifie seulement si metadata existe et a un label
+                    if metadata and metadata.label:
+                        logger.info(f"Traitement des fichiers pour {album_name} avec le label {metadata.label}")
                         for file in files:
-                            self._update_metadata(file, metadata)
-                            processed_count += 1
-                            if progress_callback:
-                                progress_callback(
-                                    (processed_count / total_files) * 100,
-                                    f"[{processed_count}/{total_files}] Mise à jour de {file.name}"
-                                )
+                            try:
+                                self._update_metadata(file, metadata)
+                                processed_count += 1
+                                if progress_callback:
+                                    progress_callback(
+                                        (processed_count / total_files) * 100,
+                                        f"[{processed_count}/{total_files}] Mise à jour de {file.name}"
+                                    )
+                            except Exception as e:
+                                error_msg = f"Erreur lors de la mise à jour du fichier {file.name}: {str(e)}"
+                                self._log_error(file, error_msg)
+                                if progress_callback:
+                                    progress_callback(None, f"❌ {error_msg}")
                     else:
-                        # Log tous les fichiers de l'album comme non trouvés
-                        reason = "Score de confiance insuffisant" if metadata else "Aucun résultat trouvé"
+                        reason = "Pas de label trouvé" if metadata else "Aucun résultat trouvé"
+                        logger.info(f"Fichiers ignorés pour {album_name}: {reason}")
                         for file in files:
                             current_metadata = self._read_metadata(file)
                             self._log_not_found(file, current_metadata, reason)
+
                 except Exception as e:
                     error_msg = f"Erreur lors du traitement de l'album {album_name}: {str(e)}"
                     self._log_error(first_file, error_msg)
@@ -902,12 +908,9 @@ class MP3Processor:
 
             if not self.processing_canceled and progress_callback:
                 progress_callback(100, "✅ Traitement terminé!")
-
-                # Ajout du résumé détaillé
                 update_summary = self.get_update_summary()
                 progress_callback(None, update_summary)
 
-                # Statistiques des erreurs
                 not_found_count = len(self.not_found_records)
                 error_count = len(self.error_records)
                 progress_callback(None, "\n📈 Statistiques:")
