@@ -85,7 +85,7 @@ pip install -r requirements.txt
 
 1. Launch the program:
 ```bash
-python AMTU_ver2.14.py
+python AMTU.py
 ```
 
 2. In the GUI:
