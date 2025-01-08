@@ -520,39 +520,68 @@ class MP3Processor:
                 'catalogs_found': set()  # Ensemble des numéros de catalogue trouvés
             }
 
+    def _is_valid_mp3_file(self, file_path: Path) -> bool:
+        """Vérifie si le fichier est un MP3 valide et non un fichier caché."""
+        # Ignore les fichiers cachés Mac OS et système
+        if file_path.name.startswith('._') or file_path.name.startswith('.'):
+            return False
+        # Vérifie si le fichier est accessible et valide
+        try:
+            EasyID3(str(file_path))
+            return True
+        except Exception:
+            return False
+
+    def _read_metadata_safe(self, file_path: Path) -> Optional[TrackMetadata]:
+        """Version sécurisée de read_metadata sans récursion."""
+        if not self._is_valid_mp3_file(file_path):
+            return None
+
+        try:
+            audio = EasyID3(str(file_path))
+            return TrackMetadata(
+                title=audio.get('title', [''])[0],
+                artist=audio.get('artist', [''])[0],
+                album=audio.get('album', [''])[0],
+                label=audio.get('composer', [''])[0],
+                catalog_number=audio.get('grouping', [''])[0]
+            )
+        except Exception as e:
+            # Log direct sans récursion
+            error_record = {
+                'file': str(file_path),
+                'title': '',
+                'artist': '',
+                'album': '',
+                'error': f"Erreur de lecture des tags: {str(e)}"
+            }
+            self.error_records.append(error_record)
+            return None
+
     def group_files_by_album(self, files: List[Path], progress_callback) -> Dict[Tuple[str, bool], List[Path]]:
-        """Regroupe les fichiers par album/EP."""
+        """Version améliorée du groupement de fichiers."""
         if progress_callback:
             progress_callback(None, "🔍 Regroupement des fichiers par album/EP...")
 
         grouped = {}
+        # Filtrer d'abord les fichiers valides
+        valid_files = [f for f in files if self._is_valid_mp3_file(f)]
 
-        for file_path in files:
-            try:
-                metadata = self._read_metadata(file_path)
-                if metadata and metadata.album:
-                    album_files = [f for f in files if self._read_metadata(f) and
-                                 self._read_metadata(f).album == metadata.album]
-                    is_ep = len(album_files) < 7
+        for file_path in valid_files:
+            metadata = self._read_metadata_safe(file_path)
+            if metadata and metadata.album:
+                # Utiliser _read_metadata_safe pour éviter la récursion
+                album_files = [f for f in valid_files
+                             if (meta := self._read_metadata_safe(f))
+                             and meta.album == metadata.album]
 
-                    album_info = (metadata.album, is_ep)
-                    if album_info not in grouped:
-                        grouped[album_info] = []
+                is_ep = len(album_files) < 7
+                album_info = (metadata.album, is_ep)
+
+                if album_info not in grouped:
+                    grouped[album_info] = []
+                if file_path not in grouped[album_info]:
                     grouped[album_info].append(file_path)
-            except Exception as e:
-                logger.error(f"Erreur lors du regroupement de {file_path}: {e}")
-
-        # Statistiques
-        albums_count = sum(1 for album_info, _ in grouped.items() if not album_info[1])
-        eps_count = sum(1 for album_info, _ in grouped.items() if album_info[1])
-        singles_count = len(files) - sum(len(files_list) for files_list in grouped.values())
-
-        if progress_callback:
-            progress_callback(None, "\n📊 Résumé du regroupement :")
-            progress_callback(None, f"  • Albums : {albums_count}")
-            progress_callback(None, f"  • EPs : {eps_count}")
-            progress_callback(None, f"  • Singles : {singles_count}")
-            progress_callback(None, "")
 
         return grouped
 
@@ -847,12 +876,14 @@ class MP3Processor:
     def process_directory(self, directory: Path, progress_callback=None) -> None:
         """Traite tous les fichiers MP3 dans un dossier et ses sous-dossiers."""
         try:
-            mp3_files = list(directory.rglob("*.mp3"))
-            total_files = len(mp3_files)
+            # Filtrer les fichiers MP3 valides dès le début
+            mp3_files = [f for f in directory.rglob("*.mp3")
+                        if self._is_valid_mp3_file(f)]
 
+            total_files = len(mp3_files)
             if total_files == 0:
                 if progress_callback:
-                    progress_callback(None, "❌ Aucun fichier MP3 trouvé dans le dossier")
+                    progress_callback(None, "❌ Aucun fichier MP3 valide trouvé")
                 return
 
             if progress_callback:
