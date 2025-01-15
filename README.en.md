@@ -29,6 +29,21 @@ AMTU is a Python GUI tool designed to automatically update MP3 file tags using m
 - Batch processing support
 - Smart album/EP grouping
 
+- **Intelligent Genre Management**:
+  - Automatic genre detection based on label and artist
+  - Customizable genre mapping through GUI
+  - Flexible genre rules configuration by label and artist
+  - Automatic genre updates according to your preferences
+
+- **Integrated Genre Mapping Editor**:
+  - GUI for managing genre mappings
+  - Configuration of mapping rules for:
+    - Genres (e.g., "dance" → "Drum & Bass")
+    - Labels (e.g., "Hospital Records" → "Drum & Bass")
+    - Artists (e.g., "Netsky" → "Drum & Bass")
+  - Real-time rule updates
+  - Automatic configuration saving
+
 ## 🔧 Prerequisites
 
 - Python 3.7 or higher
@@ -92,6 +107,7 @@ python AMTU.py
    - Load your API keys
    - Select services to use (MusicBrainz, Spotify, Discogs)
    - Initialize APIs
+   - [Optional] Configure your genre mapping rules
    - Select a folder containing your MP3 files (or use drag & drop)
    - Start processing
 
@@ -104,10 +120,48 @@ AMTU generates several log files:
 
 ## ⚙️ Configuration
 
+### API Services
 Services can be enabled/disabled individually:
 - MusicBrainz (enabled by default)
 - Spotify (requires API keys)
 - Discogs (requires token)
+
+### Genre Configuration
+The genre mapping editor allows you to:
+1. Define genre mapping rules through the GUI
+2. Manage three types of rules:
+   - Genre mappings (converting one genre to another)
+   - Label-based rules (assigning genre based on label)
+   - Artist-based rules (assigning genre based on artist)
+3. Configurations are saved in `genre_mappings.json`
+
+To access the editor:
+1. Launch AMTU
+2. Click the "Edit Mappings" button
+3. Use tabs to manage each type of mapping
+4. Double-click an entry to modify it
+5. Use Add/Delete/Edit buttons to manage your rules
+6. Don't forget to save your changes
+
+## 📁 Configuration Files
+
+- `api_keys.json`: API keys configuration
+- `genre_mappings.json`: Genre mapping rules configuration
+  ```json
+  {
+    "genres": {
+      "dnb": "Drum & Bass",
+      "jungle": "Drum & Bass"
+    },
+    "labels": {
+      "hospital records": "Drum & Bass",
+      "ram records": "Drum & Bass"
+    },
+    "artists": {
+      "netsky": "Drum & Bass",
+      "high contrast": "Drum & Bass"
+    }
+  }
 
 ## 🤝 Contributing
 

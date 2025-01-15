@@ -29,6 +29,21 @@ AMTU est un outil graphique Python permettant de mettre à jour automatiquement 
 - Support du traitement par lots
 - Regroupement intelligent par album/EP
 
+- **Gestion intelligente des genres** :
+  - Détection automatique des genres basée sur le label et l'artiste
+  - Mapping personnalisable des genres via interface graphique
+  - Configuration flexible des règles de genre par label et artiste
+  - Mise à jour automatique des genres selon vos préférences
+
+- **Éditeur de Mapping de Genres intégré** :
+  - Interface graphique pour gérer les mappings de genres
+  - Configuration des règles de mapping pour :
+    - Genres (ex: "dance" → "Drum & Bass")
+    - Labels (ex: "Hospital Records" → "Drum & Bass")
+    - Artistes (ex: "Netsky" → "Drum & Bass")
+  - Mise à jour en temps réel des règles
+  - Sauvegarde automatique des configurations
+
 ## 🔧 Prérequis
 
 - Python 3.7 ou supérieur
@@ -92,6 +107,7 @@ python AMTU.py
    - Chargez vos clés API
    - Sélectionnez les services à utiliser (MusicBrainz, Spotify, Discogs)
    - Initialisez les APIs
+   - [Optionnel] Configurez vos règles de mapping de genres
    - Sélectionnez un dossier contenant vos fichiers MP3 (ou utilisez le drag & drop)
    - Lancez le traitement
 
@@ -104,10 +120,48 @@ AMTU génère plusieurs fichiers de logs :
 
 ## ⚙️ Configuration
 
+### Services API
 Les services peuvent être activés/désactivés individuellement :
 - MusicBrainz (activé par défaut)
 - Spotify (nécessite des clés API)
 - Discogs (nécessite un token)
+
+### Configuration des Genres
+L'éditeur de mapping des genres permet de :
+1. Définir des règles de mapping de genres via l'interface graphique
+2. Gérer trois types de règles :
+   - Mappings de genres (conversion d'un genre vers un autre)
+   - Règles basées sur les labels (attribution d'un genre selon le label)
+   - Règles basées sur les artistes (attribution d'un genre selon l'artiste)
+3. Les configurations sont sauvegardées dans `genre_mappings.json`
+
+Pour accéder à l'éditeur :
+1. Lancez AMTU
+2. Cliquez sur le bouton "Éditer les Mappings"
+3. Utilisez les onglets pour gérer chaque type de mapping
+4. Double-cliquez sur une entrée pour la modifier
+5. Utilisez les boutons Ajouter/Supprimer/Éditer pour gérer vos règles
+6. N'oubliez pas de sauvegarder vos modifications
+
+## 📁 Fichiers de Configuration
+
+- `api_keys.json` : Configuration des clés API
+- `genre_mappings.json` : Configuration des règles de mapping de genres
+  ```json
+  {
+    "genres": {
+      "dnb": "Drum & Bass",
+      "jungle": "Drum & Bass"
+    },
+    "labels": {
+      "hospital records": "Drum & Bass",
+      "ram records": "Drum & Bass"
+    },
+    "artists": {
+      "netsky": "Drum & Bass",
+      "high contrast": "Drum & Bass"
+    }
+  }
 
 ## 🤝 Contribution
 

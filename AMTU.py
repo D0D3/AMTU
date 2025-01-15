@@ -13,6 +13,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkinterdnd2 import *  # Pour le drag & drop
 from tkinterdnd2 import TkinterDnD, DND_FILES
+from genre_manager import GenreManager
+from models import TrackMetadata
 import json
 from pathlib import Path
 import logging
@@ -31,6 +33,7 @@ import discogs_client
 import musicbrainzngs
 import mutagen
 from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3, TCON, TXXX, TGID, TDRC, TPE2, TPE1, TALB, TIT2, TMCL
 
 # Configuration du logging
 logging.basicConfig(
@@ -38,21 +41,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-@dataclass
-class TrackMetadata:
-    """Structure pour stocker les métadonnées d'une piste."""
-    title: str
-    artist: str
-    album: str
-    label: Optional[str] = None
-    catalog_number: Optional[str] = None
-    artist_sort: Optional[str] = None
-    is_single: bool = False
-    confidence: float = 0.0
-    source: str = ""
-    year: Optional[int] = None  # Ajout année
-    genre: Optional[str] = None # Ajout genre
 
 class ConfigManager:
     """Gère la configuration et la validation des APIs."""
@@ -507,6 +495,7 @@ class MP3Processor:
 
     def __init__(self, api_manager: APIManager):
             self.api_manager = api_manager
+            self.genre_manager = GenreManager()
             self.error_records = []
             self.not_found_records = []
             self.processing_canceled = False
@@ -515,9 +504,11 @@ class MP3Processor:
                 'updated_files': 0,
                 'label_updates': 0,
                 'catalog_updates': 0,
+                'genre_updates':0,
                 'source_used': None,  # Source API utilisée
                 'labels_found': set(),  # Ensemble des labels trouvés
-                'catalogs_found': set()  # Ensemble des numéros de catalogue trouvés
+                'catalogs_found': set(),  # Ensemble des numéros de catalogue trouvés
+                'genres_found': set()  # Correction de genre_found -> genres_found
             }
 
     def _is_valid_mp3_file(self, file_path: Path) -> bool:
@@ -544,7 +535,8 @@ class MP3Processor:
                 artist=audio.get('artist', [''])[0],
                 album=audio.get('album', [''])[0],
                 label=audio.get('composer', [''])[0],
-                catalog_number=audio.get('grouping', [''])[0]
+                catalog_number=audio.get('grouping', [''])[0],
+                genre=audio.get('genre', [''])[0]
             )
         except Exception as e:
             # Log direct sans récursion
@@ -617,6 +609,7 @@ class MP3Processor:
         if best_match.confidence >= 60:
             if best_match.label:
                 logger.info(f"Résultat accepté - Score: {best_match.confidence}, Label: {best_match.label}")
+                best_match.genre = self.genre_manager.detect_genre(best_match)
                 return best_match
             else:
                 logger.info("Résultat rejeté - Pas de label trouvé")
@@ -652,121 +645,149 @@ class MP3Processor:
         except Exception as e:
             logger.error(f"Erreur lors de l'écriture du fichier d'erreurs: {e}")
 
+    # Voici la version corrigée de la méthode _update_metadata
     def _update_metadata(self, file_path: Path, metadata: TrackMetadata) -> None:
-            """Met à jour uniquement le label et le numéro de catalogue dans les champs appropriés."""
+        """Met à jour uniquement le label et le numéro de catalogue dans les champs appropriés."""
+        try:
+            from mutagen.id3 import ID3, TCOM, GRP1, TPE1, TALB, TIT2, TCON, TDTG, TPE2, COMM
+
             try:
-                from mutagen.id3 import ID3, TCOM, GRP1, TPE1, TALB, TIT2, TCON, TDTG, TPE2
+                audio = ID3(str(file_path))
+            except:
+                audio = ID3()
+                audio.save(str(file_path))
+                audio = ID3(str(file_path))
 
-                try:
-                    audio = ID3(str(file_path))
-                except:
-                    audio = ID3()
-                    audio.save(str(file_path))
-                    audio = ID3(str(file_path))
+            updated = False
 
-                updated = False
+            # Sauvegarder les métadonnées existantes
+            existing_metadata = {
+                'title': str(audio.get('TIT2', [''])[0]) if 'TIT2' in audio else '',
+                'artist': str(audio.get('TPE1', [''])[0]) if 'TPE1' in audio else '',
+                'album': str(audio.get('TALB', [''])[0]) if 'TALB' in audio else '',
+                'genre': str(audio.get('TCON', [''])[0]) if 'TCON' in audio else '',
+                'date': str(audio.get('TDTG', [''])[0]) if 'TDTG' in audio else ''
+            }
 
-                # Sauvegarder les métadonnées existantes
-                existing_metadata = {
-                    'title': str(audio.get('TIT2', [''])[0]) if 'TIT2' in audio else '',
-                    'artist': str(audio.get('TPE1', [''])[0]) if 'TPE1' in audio else '',
-                    'album': str(audio.get('TALB', [''])[0]) if 'TALB' in audio else '',
-                    'genre': str(audio.get('TCON', [''])[0]) if 'TCON' in audio else '',
-                    'date': str(audio.get('TDTG', [''])[0]) if 'TDTG' in audio else ''  # Sauvegarde de la date
-                }
-
-                # Mise à jour du label (composer)
-                if metadata.label:
-                    current_label = str(audio.get('TCOM', [''])[0]) if 'TCOM' in audio else ''
-                    if current_label.lower() != metadata.label.lower():
-                        composer_frame = TCOM(encoding=3, text=[metadata.label])
-                        audio['TCOM'] = composer_frame
-                        logger.info(f"Label mis à jour: '{current_label}' → '{metadata.label}'")
-                        updated = True
-                        self.update_summary['label_updates'] += 1
-                        self.update_summary['labels_found'].add(metadata.label)
-
-                # Mise à jour du numéro de catalogue (grouping)
-                if metadata.catalog_number:
-                    current_grouping = str(audio.get('GRP1', [''])[0]) if 'GRP1' in audio else ''
-                    if current_grouping.lower() != metadata.catalog_number.lower():
-                        audio['GRP1'] = GRP1(encoding=3, text=[metadata.catalog_number])
-                        logger.info(f"Numéro de catalogue mis à jour: '{current_grouping}' → '{metadata.catalog_number}'")
-                        updated = True
-                        self.update_summary['catalog_updates'] += 1
-                        self.update_summary['catalogs_found'].add(metadata.catalog_number)
-
-                # Nettoyer le titre de l'album
-                current_album = existing_metadata['album']
-                new_album = current_album
-
-                # Supprime le suffixe "- Single" avec différentes variations possibles
-                single_patterns = [
-                    r'\s*-\s*Single\s*$',  # "- Single" à la fin
-                    r'\s*\(Single\)\s*$',   # "(Single)" à la fin
-                    r'\s*-\s*single\s*$',   # "- single" à la fin (casse différente)
-                    r'\s*\(single\)\s*$'    # "(single)" à la fin (casse différente)
-                ]
-
-                for pattern in single_patterns:
-                    new_album = re.sub(pattern, '', new_album, flags=re.IGNORECASE)
-
-                new_album = new_album.strip()
-
-                if new_album != current_album:
-                    audio['TALB'] = TALB(encoding=3, text=[new_album])
-                    logger.info(f"Album nettoyé: '{current_album}' → '{new_album}'")
+            # Mise à jour du label (composer)
+            if metadata.label:
+                current_label = str(audio.get('TCOM', [''])[0]) if 'TCOM' in audio else ''
+                if current_label.lower() != metadata.label.lower():
+                    composer_frame = TCOM(encoding=3, text=[metadata.label])
+                    audio['TCOM'] = composer_frame
+                    logger.info(f"Label mis à jour: '{current_label}' → '{metadata.label}'")
                     updated = True
-                    existing_metadata['album'] = new_album
+                    self.update_summary['label_updates'] += 1
+                    self.update_summary['labels_found'].add(metadata.label)
 
-                # Mise à jour de l'artiste de l'album (Band)
-                if metadata.artist:
-                    current_album_artist = str(audio.get('TPE2', [''])[0]) if 'TPE2' in audio else ''
-                    if current_album_artist != metadata.artist:
-                        audio['TPE2'] = TPE2(encoding=3, text=[metadata.artist])
-                        logger.info(f"Album Artist mis à jour: '{current_album_artist}' → '{metadata.artist}'")
-                        updated = True
+            # Mise à jour du numéro de catalogue (grouping)
+            if metadata.catalog_number:
+                current_grouping = str(audio.get('GRP1', [''])[0]) if 'GRP1' in audio else ''
+                if current_grouping.lower() != metadata.catalog_number.lower():
+                    audio['GRP1'] = GRP1(encoding=3, text=[metadata.catalog_number])
+                    logger.info(f"Numéro de catalogue mis à jour: '{current_grouping}' → '{metadata.catalog_number}'")
+                    updated = True
+                    self.update_summary['catalog_updates'] += 1
+                    self.update_summary['catalogs_found'].add(metadata.catalog_number)
 
-                # Restaurer les métadonnées existantes
-                if existing_metadata['title']:
-                    audio['TIT2'] = TIT2(encoding=3, text=[existing_metadata['title']])
-                if existing_metadata['artist']:
-                    audio['TPE1'] = TPE1(encoding=3, text=[existing_metadata['artist']])
-                if existing_metadata['album']:
-                    audio['TALB'] = TALB(encoding=3, text=[existing_metadata['album']])
-                if existing_metadata['genre']:
-                    audio['TCON'] = TCON(encoding=3, text=[existing_metadata['genre']])
-                # Restaurer la date d'ajout
-                if existing_metadata['date']:
-                    audio['TDTG'] = TDTG(encoding=3, text=[existing_metadata['date']])
+            # Gestion du genre
+            try:
+                # Déterminer le nouveau genre
+                new_genre = None
+                should_update = False
+                current_genre = str(audio.get('TCON', [''])[0]) if 'TCON' in audio else ''
 
-                # Préserver la date de modification du fichier
-                original_time = os.path.getmtime(file_path)
+                if metadata.label and metadata.label.lower() in self.genre_manager.label_genre_rules:
+                    new_genre = self.genre_manager.label_genre_rules[metadata.label.lower()]
+                    should_update = True
+                    logger.info(f"Genre déterminé par le label: '{new_genre}' (label: {metadata.label})")
 
-                if updated:
-                    self.update_summary['updated_files'] += 1
-                    self.update_summary['source_used'] = metadata.source
-                    audio.save(str(file_path))
-                    # Restaurer la date de modification originale
-                    os.utime(file_path, (original_time, original_time))
-                    logger.info(f"Fichier sauvegardé avec succès: {file_path.name}")
+                elif metadata.artist and metadata.artist.lower() in self.genre_manager.artist_genre_rules:
+                    new_genre = self.genre_manager.artist_genre_rules[metadata.artist.lower()]
+                    should_update = True
+                    logger.info(f"Genre déterminé par l'artiste: '{new_genre}' (artiste: {metadata.artist})")
 
-                self.update_summary['total_files'] += 1
+                elif current_genre:
+                    current_genre_lower = current_genre.lower()
+                    if current_genre_lower in self.genre_manager.genre_mapping:
+                        mapped_genre = self.genre_manager.genre_mapping[current_genre_lower]
+                        if mapped_genre != current_genre:
+                            new_genre = mapped_genre
+                            should_update = True
+                            logger.info(f"Genre remappé: '{current_genre}' → '{new_genre}'")
 
-                # Vérification après sauvegarde
-                if updated:
-                    audio_check = ID3(str(file_path))
-                    logger.info("Vérification après sauvegarde:")
-                    logger.info(f"Label (Compositeur): {str(audio_check.get('TCOM', ['Non trouvé'])[0]) if 'TCOM' in audio_check else 'Non trouvé'}")
-                    logger.info(f"Regroupement: {str(audio_check.get('GRP1', ['Non trouvé'])[0]) if 'GRP1' in audio_check else 'Non trouvé'}")
-                    if 'TDTG' in audio_check:
-                        logger.info(f"Date préservée: {str(audio_check['TDTG'])}")
+                elif not current_genre:
+                    detected_genre = self.genre_manager.detect_genre(metadata)
+                    if detected_genre:
+                        new_genre = detected_genre
+                        should_update = True
+                        logger.info(f"Nouveau genre détecté: '{new_genre}'")
+
+                # Mise à jour du genre si nécessaire
+                if should_update and new_genre:
+                    # Supprimer tous les tags de genre existants
+                    for key in list(audio.keys()):
+                        if any(tag in key for tag in ['TCON', 'GENRE']):
+                            audio.delall(key)
+
+                    # Ajouter le nouveau genre
+                    audio['TCON'] = TCON(encoding=3, text=[new_genre])
+
+                    logger.info(f"Genre mis à jour: '{current_genre}' → '{new_genre}'")
+                    self.update_summary['genre_updates'] += 1
+                    self.update_summary['genres_found'].add(new_genre)
+                    updated = True
 
             except Exception as e:
-                error_msg = f"Erreur de mise à jour des tags: {str(e)}"
-                logger.error(error_msg)
-                self._log_error(file_path, error_msg)
-                raise
+                logger.error(f"Erreur lors de la mise à jour du genre: {str(e)}")
+
+            # Nettoyer le titre de l'album
+            current_album = existing_metadata['album']
+            new_album = current_album
+
+            # Supprime le suffixe "- Single"
+            single_patterns = [
+                r'\s*-\s*Single\s*$',
+                r'\s*\(Single\)\s*$',
+                r'\s*-\s*single\s*$',
+                r'\s*\(single\)\s*$'
+            ]
+
+            for pattern in single_patterns:
+                new_album = re.sub(pattern, '', new_album, flags=re.IGNORECASE)
+
+            new_album = new_album.strip()
+
+            if new_album != current_album:
+                audio['TALB'] = TALB(encoding=3, text=[new_album])
+                logger.info(f"Album nettoyé: '{current_album}' → '{new_album}'")
+                updated = True
+                existing_metadata['album'] = new_album
+
+            # Mise à jour de l'artiste de l'album (Band)
+            if metadata.artist:
+                current_album_artist = str(audio.get('TPE2', [''])[0]) if 'TPE2' in audio else ''
+                if current_album_artist != metadata.artist:
+                    audio['TPE2'] = TPE2(encoding=3, text=[metadata.artist])
+                    logger.info(f"Album Artist mis à jour: '{current_album_artist}' → '{metadata.artist}'")
+                    updated = True
+
+            # Sauvegarder les modifications si nécessaire
+            if updated:
+                original_time = os.path.getmtime(file_path)
+                self.update_summary['updated_files'] += 1
+                self.update_summary['source_used'] = metadata.source
+                audio.save(v2_version=4)
+                os.utime(file_path, (original_time, original_time))
+                logger.info(f"Fichier sauvegardé avec succès: {file_path.name}")
+
+            self.update_summary['total_files'] += 1
+
+        except Exception as e:
+            error_msg = f"Erreur de mise à jour des tags: {str(e)}"
+            logger.error(error_msg)
+            self._log_error(file_path, error_msg)
+            raise
 
     def _read_metadata(self, file_path: Path) -> Optional[TrackMetadata]:
         """Lit les métadonnées existantes d'un fichier MP3."""
@@ -876,6 +897,16 @@ class MP3Processor:
     def process_directory(self, directory: Path, progress_callback=None) -> None:
         """Traite tous les fichiers MP3 dans un dossier et ses sous-dossiers."""
         try:
+            # Gestion des genres personnalisés
+            try:
+                self.genre_manager.load_custom_mappings('genre_mappings.json')
+                if progress_callback:
+                    progress_callback(None, "✅ Configuration des genres chargée")
+            except Exception as e:
+                if progress_callback:
+                    progress_callback(None, f"⚠️ Erreur lors du chargement des genres : {str(e)}")
+                logger.warning(f"Erreur lors du chargement des mappings de genre : {str(e)}")
+
             # Filtrer les fichiers MP3 valides dès le début
             mp3_files = [f for f in directory.rglob("*.mp3")
                         if self._is_valid_mp3_file(f)]
@@ -971,6 +1002,11 @@ class MP3Processor:
                 for catalog in self.update_summary['catalogs_found']:
                     summary.append(f"    - {catalog}")
 
+            if self.update_summary.get('genres_found'):
+                    summary.append(f"  • Genres mis à jour ({self.update_summary['genre_updates']} mises à jour):")
+                    for genre in self.update_summary['genres_found']:
+                        summary.append(f"    - {genre}")
+
             return "\n".join(summary)
 
 class MetadataManagerGUI:
@@ -1047,6 +1083,14 @@ class MetadataManagerGUI:
         ttk.Button(api_frame, text="Initialiser les APIs", command=self.initialize_apis).grid(row=2, column=0, columnspan=2, pady=5)
 
         api_frame.columnconfigure(1, weight=1)
+
+        # Bouton pour l'éditeur de mapping
+        ttk.Button(services_frame, text="Éditer les Genres",
+                command=self.open_mapping_editor).grid(row=0, column=3, padx=5)
+
+    def open_mapping_editor(self):
+        """Ouvre l'éditeur de mapping de genres."""
+        GenreMappingEditor(self.root)
 
     def load_api_keys_file(self):
         filename = filedialog.askopenfilename(
@@ -1400,6 +1444,198 @@ class MetadataManagerGUI:
         except Exception as e:
             messagebox.showerror("Erreur d'export", f"Erreur lors de l'export des logs: {str(e)}")
             self.log_message(f"❌ Erreur d'export : {str(e)}")
+
+class GenreMappingEditor:
+    def __init__(self, parent):
+        self.window = tk.Toplevel(parent)
+        self.window.title("Éditeur de Mapping de Genres")
+        self.window.geometry("800x600")
+        self.window.minsize(800, 600)
+
+        # Définition des en-têtes pour chaque type de mapping
+        self.headers = {
+            'genres': ('Genre Source', 'Genre Mappé'),
+            'labels': ('Label', 'Genre'),
+            'artists': ('Artiste', 'Genre')
+        }
+
+        # Création des onglets
+        self.notebook = ttk.Notebook(self.window)
+        self.notebook.pack(expand=True, fill='both', padx=5, pady=5)
+
+        # Création des trois frames pour chaque type de mapping
+        self.genres_frame = ttk.Frame(self.notebook)
+        self.labels_frame = ttk.Frame(self.notebook)
+        self.artists_frame = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.genres_frame, text='Genres')
+        self.notebook.add(self.labels_frame, text='Labels')
+        self.notebook.add(self.artists_frame, text='Artistes')
+
+        # Initialisation des tableaux
+        self.setup_treeview(self.genres_frame, 'genres')
+        self.setup_treeview(self.labels_frame, 'labels')
+        self.setup_treeview(self.artists_frame, 'artists')
+
+        # Boutons de contrôle
+        self.setup_control_buttons()
+
+        # Chargement des données
+        self.load_mappings()
+
+    def setup_treeview(self, parent, mapping_type):
+        # Frame pour les boutons
+        button_frame = ttk.Frame(parent)
+        button_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Button(button_frame, text="Ajouter",
+                  command=lambda: self.add_item(mapping_type)).pack(side='left', padx=2)
+        ttk.Button(button_frame, text="Supprimer",
+                  command=lambda: self.delete_item(mapping_type)).pack(side='left', padx=2)
+        ttk.Button(button_frame, text="Éditer",
+                  command=lambda: self.edit_item(mapping_type)).pack(side='left', padx=2)
+
+        # Création du Treeview
+        columns = ('source', 'mapped')
+        tree = ttk.Treeview(parent, columns=columns, show='headings')
+
+        # Définition des en-têtes
+        tree.heading('source', text=self.headers[mapping_type][0])
+        tree.heading('mapped', text=self.headers[mapping_type][1])
+
+        # Configuration des colonnes
+        tree.column('source', width=200)
+        tree.column('mapped', width=200)
+
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(parent, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+
+        # Placement des éléments
+        tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Stocker la référence au Treeview
+        setattr(self, f"{mapping_type}_tree", tree)
+
+        # Double-clic pour éditer
+        tree.bind('<Double-1>', lambda e: self.edit_item(mapping_type))
+
+    def add_item(self, mapping_type):
+        dialog = EditMappingDialog(self.window, "", "", self.headers[mapping_type])
+        if dialog.result:
+            source, mapped = dialog.result
+            tree = getattr(self, f"{mapping_type}_tree")
+            tree.insert('', 'end', values=(source, mapped))
+
+    def edit_item(self, mapping_type):
+        tree = getattr(self, f"{mapping_type}_tree")
+        selected = tree.selection()
+        if not selected:
+            return
+
+        current_values = tree.item(selected[0])['values']
+        dialog = EditMappingDialog(self.window, current_values[0], current_values[1],
+                                 self.headers[mapping_type])
+
+        if dialog.result:
+            source, mapped = dialog.result
+            tree.item(selected[0], values=(source, mapped))
+
+    def delete_item(self, mapping_type):
+        tree = getattr(self, f"{mapping_type}_tree")
+        selected = tree.selection()
+        if selected:
+            if messagebox.askyesno("Confirmation", "Voulez-vous vraiment supprimer cet élément ?"):
+                tree.delete(selected[0])
+
+    def setup_control_buttons(self):
+        control_frame = ttk.Frame(self.window)
+        control_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Button(control_frame, text="Sauvegarder",
+                  command=self.save_mappings).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Fermer",
+                  command=self.window.destroy).pack(side='right', padx=5)
+
+    def load_mappings(self):
+        try:
+            with open('genre_mappings.json', 'r', encoding='utf-8') as f:
+                mappings = json.load(f)
+
+            # Chargement des données dans chaque Treeview
+            for mapping_type in ['genres', 'labels', 'artists']:
+                tree = getattr(self, f"{mapping_type}_tree")
+                tree.delete(*tree.get_children())
+
+                for source, mapped in mappings.get(mapping_type, {}).items():
+                    tree.insert('', 'end', values=(source, mapped))
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors du chargement des mappings: {str(e)}")
+
+    def save_mappings(self):
+        try:
+            mappings = {}
+
+            # Récupération des données de chaque Treeview
+            for mapping_type in ['genres', 'labels', 'artists']:
+                tree = getattr(self, f"{mapping_type}_tree")
+                mapping_dict = {}
+
+                for item in tree.get_children():
+                    source, mapped = tree.item(item)['values']
+                    mapping_dict[source.lower()] = mapped
+
+                mappings[mapping_type] = mapping_dict
+
+            # Sauvegarde dans le fichier
+            with open('genre_mappings.json', 'w', encoding='utf-8') as f:
+                json.dump(mappings, f, indent=2, ensure_ascii=False)
+
+            messagebox.showinfo("Succès", "Mappings sauvegardés avec succès!")
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde: {str(e)}")
+
+class EditMappingDialog:
+    def __init__(self, parent, source="", mapped="", headers=('Source', 'Mapped')):
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Éditer le mapping")
+        self.dialog.geometry("400x150")
+        self.result = None
+
+        # Champs de saisie
+        ttk.Label(self.dialog, text=headers[0]).pack(pady=5)
+        self.source_entry = ttk.Entry(self.dialog, width=40)
+        self.source_entry.insert(0, source)
+        self.source_entry.pack(pady=5)
+
+        ttk.Label(self.dialog, text=headers[1]).pack(pady=5)
+        self.mapped_entry = ttk.Entry(self.dialog, width=40)
+        self.mapped_entry.insert(0, mapped)
+        self.mapped_entry.pack(pady=5)
+
+        # Boutons
+        button_frame = ttk.Frame(self.dialog)
+        button_frame.pack(fill='x', padx=5, pady=10)
+
+        ttk.Button(button_frame, text="OK", command=self.ok).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Annuler", command=self.cancel).pack(side='right', padx=5)
+
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        parent.wait_window(self.dialog)
+
+    def ok(self):
+        source = self.source_entry.get().strip()
+        mapped = self.mapped_entry.get().strip()
+        if source and mapped:
+            self.result = (source, mapped)
+            self.dialog.destroy()
+
+    def cancel(self):
+        self.dialog.destroy()
 
 def main():
     """Point d'entrée principal du programme."""
