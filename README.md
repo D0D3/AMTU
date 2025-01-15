@@ -38,7 +38,7 @@ AMTU est un outil graphique Python permettant de mettre à jour automatiquement 
 - **Éditeur de Mapping de Genres intégré** :
   - Interface graphique pour gérer les mappings de genres
   - Configuration des règles de mapping pour :
-    - Genres (ex: "dance" → "Drum & Bass")
+    - Genres (ex: "dnb" → "Drum & Bass")
     - Labels (ex: "Hospital Records" → "Drum & Bass")
     - Artistes (ex: "Netsky" → "Drum & Bass")
   - Mise à jour en temps réel des règles
@@ -162,6 +162,26 @@ Pour accéder à l'éditeur :
       "high contrast": "Drum & Bass"
     }
   }
+
+## 🔨 Pour les Développeurs
+
+### Structure du Code
+- **AMTU.py**: Programme principal et interface graphique
+- **genre_manager.py**: Gestion et détection des genres
+- **models.py**: Modèles de données et structures
+  ```python
+  @dataclass
+  class TrackMetadata:
+      title: str               # Titre de la piste
+      artist: str             # Artiste principal
+      album: str              # Nom de l'album
+      label: Optional[str]    # Label (stocké dans Composer)
+      catalog_number: Optional[str]  # Numéro de catalogue
+      artist_sort: Optional[str]     # Nom de tri de l'artiste
+      is_single: bool = False        # Indicateur de single
+      confidence: float = 0.0        # Score de confiance de la correspondance
+      source: str = ""              # Source de la métadonnée (MusicBrainz, Spotify, Discogs)
+      genre: Optional[str] = None   # Genre musical
 
 ## 🤝 Contribution
 

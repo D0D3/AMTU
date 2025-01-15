@@ -38,7 +38,7 @@ AMTU is a Python GUI tool designed to automatically update MP3 file tags using m
 - **Integrated Genre Mapping Editor**:
   - GUI for managing genre mappings
   - Configuration of mapping rules for:
-    - Genres (e.g., "dance" → "Drum & Bass")
+    - Genres (e.g., "dnb" → "Drum & Bass")
     - Labels (e.g., "Hospital Records" → "Drum & Bass")
     - Artists (e.g., "Netsky" → "Drum & Bass")
   - Real-time rule updates
@@ -162,6 +162,26 @@ To access the editor:
       "high contrast": "Drum & Bass"
     }
   }
+
+## 🔨 For Developers
+
+### Code Structure
+- **AMTU.py**: Main program and graphical interface
+- **genre_manager.py**: Genre management and detection
+- **models.py**: Data models and structures
+  ```python
+  @dataclass
+  class TrackMetadata:
+      title: str               # Track title
+      artist: str             # Main artist
+      album: str              # Album name
+      label: Optional[str]    # Label (stored in Composer)
+      catalog_number: Optional[str]  # Catalog number
+      artist_sort: Optional[str]     # Artist sort name
+      is_single: bool = False        # Single indicator
+      confidence: float = 0.0        # Match confidence score
+      source: str = ""              # Metadata source (MusicBrainz, Spotify, Discogs)
+      genre: Optional[str] = None   # Musical genre
 
 ## 🤝 Contributing
 
