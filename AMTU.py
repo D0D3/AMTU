@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Apple Music Tag Updater (AMTU)
-Un outil pour mettre à jour automatiquement les tags des fichiers MP3.
-"""
+{
+  "app": {
+    "name": "Apple Music Tag Updater (AMTU)",
+    "description": "Un outil pour mettre à jour automatiquement les tags des fichiers MP3."
+  }
+}
 
 # Imports standards
 from typing import Dict, List, Optional, Tuple, Any
@@ -15,6 +17,7 @@ from tkinterdnd2 import *  # Pour le drag & drop
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from genre_manager import GenreManager
 from models import TrackMetadata
+from locales.locale_manager import LocaleManager
 import json
 from pathlib import Path
 import logging
@@ -46,7 +49,8 @@ class ConfigManager:
     """Gère la configuration et la validation des APIs."""
     CONFIG_FILE = "set_api_config.json"
 
-    def __init__(self):
+    def __init__(self, locale_manager):
+        self.locale_manager = locale_manager
         self.config: Dict[str, Any] = self.load_config()
 
     def load_config(self) -> Dict[str, Any]:
@@ -69,7 +73,7 @@ class ConfigManager:
                             loaded_config['services'] = default_config['services']
                         return loaded_config
             except Exception as e:
-                logger.error(f"Erreur lors du chargement de la configuration: {e}")
+                logger.error(self.locale_manager.get_text("messages.error.config_loading", None, str(e)))
 
             return default_config
 
@@ -92,14 +96,22 @@ class ConfigManager:
             with open(self.CONFIG_FILE, 'w') as f:
                 json.dump(config, f)
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde de la configuration: {e}")
+            logger.error(self.locale_manager.get_text(
+                "messages.error.config_save",
+                None,
+                str(e)
+            ))
 
     def save_api_keys(self, config: Dict[str, Any]) -> None:
         try:
             with open('api_keys.json', 'w') as f:
                 json.dump(config, f, indent=4)
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde des API keys: {e}")
+            logger.error(self.locale_manager.get_text(
+                "messages.error.api_keys_save",
+                None,
+                str(e)
+            ))
 
     def is_service_enabled(self, service_name: str) -> bool:
         """Vérifie si un service est activé."""
@@ -128,13 +140,18 @@ class ConfigManager:
             with open(filename, 'w') as f:
                 json.dump(config, f, indent=4)
         except Exception as e:
-            logger.error(f"Erreur export config: {e}")
+            logger.error(self.locale_manager.get_text(
+                "messages.error.config_export",
+                None,
+                str(e)
+            ))
 
 class APIManager:
     """Gestionnaire centralisé des APIs musicales."""
 
-    def __init__(self, config: Dict[str, str]):
+    def __init__(self, config: Dict[str, str], locale_manager):
         self.config = config
+        self.locale_manager = locale_manager
         self.spotify = None
         self.discogs = None
         self.musicbrainz = None
@@ -154,7 +171,11 @@ class APIManager:
             )
             self.spotify = spotipy.Spotify(auth_manager=auth_manager)
         except Exception as e:
-            logger.error(f"Erreur d'initialisation Spotify: {e}")
+            logger.error(self.locale_manager.get_text(
+                "api.initialization.error.spotify",
+                None,
+                str(e)
+            ))
             raise
 
     def _init_discogs(self):
@@ -169,7 +190,11 @@ class APIManager:
                 token=self.config.get('discogs_token', discogs_config.get('token', ''))
             )
         except Exception as e:
-            logger.error(f"Erreur d'initialisation Discogs: {e}")
+            logger.error(self.locale_manager.get_text(
+                "api.initialization.error.discogs",
+                None,
+                str(e)
+            ))
             raise
 
     def _init_musicbrainz(self):
@@ -181,23 +206,43 @@ class APIManager:
                 "https://github.com/yourusername/metadata-manager"
             )
             self.musicbrainz = musicbrainzngs
-            logging.info("Connexion MusicBrainz établie avec succès")
+            logging.info(self.locale_manager.get_text("api.initialization.success.musicbrainz"))
         except Exception as e:
-            logging.error(f"Erreur d'initialisation MusicBrainz: {e}")
+            logging.error(self.locale_manager.get_text(
+                "api.initialization.error.musicbrainz",
+                None,
+                str(e)
+            ))
             raise
 
     def search_track(self, title: str, artist: str, retries: int = 3) -> List[TrackMetadata]:
         """Recherche les métadonnées avec plusieurs tentatives en cas d'échec."""
-        logger.info(f"Début de la recherche pour {title} - {artist}")
+        logger.info(self.locale_manager.get_text(
+            "api.initialization.search.start",
+            None,
+            title,
+            artist
+        ))
         for attempt in range(retries):
             try:
                 results = self._execute_search(title, artist)
                 if results:
                     return results
             except Exception as e:
-                logger.warning(f"Tentative {attempt + 1}/{retries} échouée : {e}")
+                logger.warning(self.locale_manager.get_text(
+                    "api.initialization.search.attempt_failed",
+                    None,
+                    attempt + 1,
+                    retries,
+                    str(e)
+                ))
                 if attempt == retries - 1:
-                    logger.error(f"Échec de toutes les tentatives pour {title} - {artist}")
+                    logger.error(self.locale_manager.get_text(
+                        "api.initialization.search.all_attempts_failed",
+                        None,
+                        title,
+                        artist
+                    ))
                     raise
                 time.sleep(1)
         return []
@@ -493,8 +538,9 @@ class APIManager:
 class MP3Processor:
     """Gère le traitement des fichiers MP3."""
 
-    def __init__(self, api_manager: APIManager):
+    def __init__(self, api_manager: APIManager, locale_manager):
             self.api_manager = api_manager
+            self.locale_manager = locale_manager
             self.genre_manager = GenreManager()
             self.error_records = []
             self.not_found_records = []
@@ -545,7 +591,7 @@ class MP3Processor:
                 'title': '',
                 'artist': '',
                 'album': '',
-                'error': f"Erreur de lecture des tags: {str(e)}"
+                'error': self.locale_manager.get_text("processor.metadata.error.read", None, str(e))
             }
             self.error_records.append(error_record)
             return None
@@ -553,7 +599,7 @@ class MP3Processor:
     def group_files_by_album(self, files: List[Path], progress_callback) -> Dict[Tuple[str, bool], List[Path]]:
         """Version améliorée du groupement de fichiers."""
         if progress_callback:
-            progress_callback(None, "🔍 Regroupement des fichiers par album/EP...")
+            progress_callback(None, self.locale_manager.get_text("processor.analysis.file_grouping"))
 
         grouped = {}
         # Filtrer d'abord les fichiers valides
@@ -583,11 +629,19 @@ class MP3Processor:
 
         if not current_metadata or not (current_metadata.title and current_metadata.artist):
             if progress_callback:
-                progress_callback(None, "    └─ ⚠️ Métadonnées manquantes ou incomplètes")
+                progress_callback(None, self.locale_manager.get_text("processor.analysis.metadata_missing"))
             return None
 
         if progress_callback:
-            progress_callback(None, f"    └─ Recherche pour '{current_metadata.title}' - {current_metadata.artist}...")
+            progress_callback(
+                None,
+                self.locale_manager.get_text(
+                    "processor.analysis.metadata_search",
+                    None,
+                    current_metadata.title,
+                    current_metadata.artist
+                )
+            )
 
         # Délai pour éviter de surcharger les APIs
         time.sleep(0.5)
@@ -596,14 +650,29 @@ class MP3Processor:
 
         if not api_results:
             if progress_callback:
-                progress_callback(None, "    └─ ❌ Aucun résultat trouvé")
+                progress_callback(None, self.locale_manager.get_text("processor.analysis.no_results"))
             return None
 
         best_match = api_results[0]
 
         if progress_callback:
-            progress_callback(None, f"    └─ Meilleure correspondance ({best_match.source}): {best_match.confidence:.1f}%")
-            progress_callback(None, f"    └─ Label : {best_match.label if best_match.label else 'Non trouvé'}")
+            progress_callback(
+                None,
+                self.locale_manager.get_text(
+                    "processor.analysis.best_match",
+                    None,
+                    best_match.source,
+                    best_match.confidence
+                )
+            )
+            progress_callback(
+                None,
+                self.locale_manager.get_text(
+                    "processor.analysis.label_info",
+                    None,
+                    best_match.label if best_match.label else self.locale_manager.get_text("messages.common.not_found")
+                )
+            )
 
         # Simplifie la condition de validation
         if best_match.confidence >= 60:
@@ -914,11 +983,14 @@ class MP3Processor:
             total_files = len(mp3_files)
             if total_files == 0:
                 if progress_callback:
-                    progress_callback(None, "❌ Aucun fichier MP3 valide trouvé")
+                    progress_callback(None, self.locale_manager.get_text("folder.status.no_mp3"))
                 return
 
             if progress_callback:
-                progress_callback(0, f"🔍 Analyse des fichiers - {total_files} fichiers trouvés")
+                progress_callback(
+                    0,
+                    self.locale_manager.get_text("processor.progress.start", None, total_files)
+                )
 
             self.error_records = []
             self.not_found_records = []
@@ -928,11 +1000,15 @@ class MP3Processor:
             for (album_name, is_ep), files in grouped_files.items():
                 if self.processing_canceled:
                     if progress_callback:
-                        progress_callback(None, "⚠️ Traitement annulé par l'utilisateur")
+                        progress_callback(None, self.locale_manager.get_text("processor.progress.canceled"))
                     break
 
                 if progress_callback:
-                    progress_callback(None, f"\n📀 Traitement de l'album: {album_name}")
+                    progress_callback(None, self.locale_manager.get_text(
+                        "processor.progress.processing_album",
+                        None,
+                        album_name
+                    ))
 
                 first_file = files[0]
                 try:
@@ -1014,11 +1090,15 @@ class MetadataManagerGUI:
 
     def __init__(self):
         self.root = TkinterDnD.Tk()
-        self.root.title("AMTU - Apple Music Tag Updater MP3")
         self.root.minsize(800, 600)
+        self.locale_manager = LocaleManager()
+        self.menubar = tk.Menu(self.root)
+        self.root.config(menu=self.menubar)
+
+        self.root.title(self.locale_manager.get_text("gui.app_title"))
 
         # Gestionnaires
-        self.config_manager = ConfigManager()
+        self.config_manager = ConfigManager(self.locale_manager)
         self.api_manager = None
         self.mp3_processor = None
 
@@ -1045,6 +1125,9 @@ class MetadataManagerGUI:
         self.start_event_processing()
 
     def setup_ui(self):
+        """Configuration du menu"""
+        self.setup_language_menu()
+
         """Configure l'interface utilisateur complète."""
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky="nsew")
@@ -1065,32 +1148,198 @@ class MetadataManagerGUI:
 
         self.setup_log_section(main_frame)
 
+    def setup_language_menu(self):
+        """Configure le menu de sélection de langue."""
+        language_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(
+                label="Language",  # Texte par défaut en cas d'erreur de traduction
+                menu=language_menu
+        )
+
+        available_locales = self.locale_manager.get_available_locales()
+
+        for code, name in available_locales.items():
+            language_menu.add_command(
+                label=name,
+                command=lambda c=code: self.change_language(c)
+            )
+
     def setup_api_config(self, parent):
-        """Configure la section des APIs."""
-        api_frame = ttk.LabelFrame(parent, text="Configuration API", padding="5")
-        api_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.api_frame = ttk.LabelFrame(parent, text=self.locale_manager.get_text("gui.layout.api_config"), padding="5")
+        self.api_frame.grid(row=0, column=0, columnspan=2, sticky="nsew" )
+    
+        self.services_frame = ttk.LabelFrame(self.api_frame, text=self.locale_manager.get_text("gui.layout.active_services"), padding="5")
+        self.services_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
 
-        # Services actifs uniquement
-        services_frame = ttk.LabelFrame(api_frame, text="Services actifs", padding="5")
-        services_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        # Checkbuttons
+        ttk.Checkbutton(self.services_frame, text=self.locale_manager.get_text("gui.layout.services.musicbrainz"), 
+                        variable=self.musicbrainz_enabled).grid(row=0, column=0, padx=5)
+        ttk.Checkbutton(self.services_frame, text=self.locale_manager.get_text("gui.layout.services.spotify"), 
+                        variable=self.spotify_enabled).grid(row=0, column=1, padx=5)
+        ttk.Checkbutton(self.services_frame, text=self.locale_manager.get_text("gui.layout.services.discogs"), 
+                        variable=self.discogs_enabled).grid(row=0, column=2, padx=5)
 
-        ttk.Checkbutton(services_frame, text="MusicBrainz", variable=self.musicbrainz_enabled).grid(row=0, column=0, padx=5)
-        ttk.Checkbutton(services_frame, text="Spotify", variable=self.spotify_enabled).grid(row=0, column=1, padx=5)
-        ttk.Checkbutton(services_frame, text="Discogs", variable=self.discogs_enabled).grid(row=0, column=2, padx=5)
+        # Bouton genres
+        self.edit_genres_button = ttk.Button(self.services_frame, 
+                                        text=self.locale_manager.get_text("gui.buttons.edit_genres"),
+                                        command=self.open_mapping_editor)
+        self.edit_genres_button.grid(row=0, column=3, padx=5)
 
-        # Boutons
-        ttk.Button(api_frame, text="Charger API Keys", command=self.load_api_keys_file).grid(row=1, column=0, columnspan=2, pady=5)
-        ttk.Button(api_frame, text="Initialiser les APIs", command=self.initialize_apis).grid(row=2, column=0, columnspan=2, pady=5)
+        self.load_keys_button = ttk.Button(self.services_frame, 
+                                        text=self.locale_manager.get_text("gui.buttons.load_keys"),
+                                        command=self.load_api_keys_file)
+        self.load_keys_button.grid(row=0, column=4, padx=5)
 
-        api_frame.columnconfigure(1, weight=1)
+        self.init_api_button = ttk.Button(self.services_frame, 
+                                        text=self.locale_manager.get_text("gui.buttons.init_api"),
+                                        command=self.initialize_apis)
+        self.init_api_button.grid(row=0, column=5, padx=5)
 
-        # Bouton pour l'éditeur de mapping
-        ttk.Button(services_frame, text="Éditer les Genres",
-                command=self.open_mapping_editor).grid(row=0, column=3, padx=5)
+    def setup_directory_selection(self, parent):
+        self.dir_frame = ttk.LabelFrame(parent, text=self.locale_manager.get_text("gui.layout.folder_selection"), padding="5")
+        self.dir_frame.grid(row=2, column=0, columnspan=2, sticky="nsew")
+
+        # Zone navigation classique
+        self.nav_frame = ttk.Frame(self.dir_frame)
+        self.nav_frame.grid(row=0, column=0, sticky="ew", padx=5)
+
+        ttk.Entry(self.nav_frame, textvariable=self.selected_directory, state='readonly').pack(side="left", fill="x", expand=True)
+        ttk.Button(self.nav_frame, text=self.locale_manager.get_text("gui.buttons.browse"), command=self.browse_directory).pack(side="left", padx=5)
+
+        # Zone drag & drop
+        self.drop_frame = ttk.Frame(self.dir_frame, style='Drop.TFrame', height=100)
+        self.drop_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.drop_frame.grid_propagate(False)  # Maintient la hauteur fixe
+
+        self.drop_label = ttk.Label(self.drop_frame, text=self.locale_manager.get_text("gui.dropzone.hint"))
+        self.drop_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.drop_frame.drop_target_register(DND_FILES)
+        self.drop_frame.dnd_bind('<<Drop>>', self.handle_drop)
+
+        # Bouton traitement
+        self.process_button = ttk.Button(self.dir_frame, text=self.locale_manager.get_text("gui.buttons.start_processing"),
+                                       command=self.process_directory,
+                                       state="disabled")
+        self.process_button.grid(row=2, column=0, pady=5)
+
+        self.dir_frame.columnconfigure(0, weight=1)
+    
+    def setup_log_section(self, parent):
+        """Configure la section de log et progression."""
+        log_frame = ttk.LabelFrame(parent, text=self.locale_manager.get_text("gui.layout.progress"), padding="5")
+        log_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=5)
+
+        progress_info_frame = ttk.Frame(log_frame)
+        progress_info_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.progress_label = ttk.Label(progress_info_frame, text=self.locale_manager.get_text("gui.status.waiting"))
+        self.progress_label.pack(side="left", padx=5)
+
+        self.progress_percent = ttk.Label(progress_info_frame, text="0%")
+        self.progress_percent.pack(side="right", padx=5)
+
+        self.log_text = tk.Text(log_frame, height=15, width=80, wrap=tk.WORD)
+        self.log_text.grid(row=1, column=0, sticky="nsew", pady=5)
+
+        scrollbar = ttk.Scrollbar(log_frame, orient="vertical",
+                                command=self.log_text.yview)
+        scrollbar.grid(row=1, column=1, sticky="ns")
+        self.log_text['yscrollcommand'] = scrollbar.set
+
+        # Barre de progression
+        self.progress = ttk.Progressbar(log_frame, mode='determinate', length=300)
+        self.progress.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+
+        # Boutons de contrôle
+        button_frame = ttk.Frame(log_frame)
+        button_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
+
+        self.cancel_button = ttk.Button(button_frame, text=self.locale_manager.get_text("gui.buttons.cancel"),
+                                      command=self.cancel_processing,
+                                      state="disabled")
+        self.cancel_button.pack(side="left", padx=5)
+
+        self.clear_button = ttk.Button(button_frame, text=self.locale_manager.get_text("gui.buttons.clear_log"),
+                                     command=self.clear_log)
+        self.clear_button.pack(side="left", padx=5)
+
+        self.export_button = ttk.Button(button_frame, text=self.locale_manager.get_text("gui.buttons.export_logs"),
+                                    command=self.export_logs)
+        self.export_button.pack(side="left", padx=5)
+
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(1, weight=1)
+        parent.rowconfigure(4, weight=1)
+
+    def start_event_processing(self):
+        """Démarre le traitement des événements en arrière-plan."""
+        def process_events():
+            while True:
+                try:
+                    event = self.event_queue.get_nowait()
+                    if event[0] == "progress":
+                        self.handle_progress_update(event[1], event[2])
+                    elif event[0] == "log":
+                        self.log_message(event[1])
+                except Empty:
+                    break
+            self.root.after(100, process_events)
+
+        self.root.after(100, process_events)
+
+    def change_language(self, locale_code):
+        """Change la langue de l'interface."""
+        if self.locale_manager.set_locale(locale_code):
+            self.update_ui_texts()
+
+    def update_ui_texts(self):
+        self.root.title(self.locale_manager.get_text("gui.app_title"))
+        
+        if hasattr(self, 'services_frame'):
+            for checkbox in self.services_frame.winfo_children():
+                if isinstance(checkbox, ttk.Checkbutton):
+                    service = checkbox["text"].lower()
+                    checkbox.configure(text=self.locale_manager.get_text(f"gui.layout.services.{service}"))
+                elif isinstance(checkbox, ttk.Button):
+                    if "edit_genres" in str(checkbox):
+                        checkbox.configure(text=self.locale_manager.get_text("gui.buttons.edit_genres"))
+                    elif "load_keys" in str(checkbox):
+                        checkbox.configure(text=self.locale_manager.get_text("gui.buttons.load_keys"))
+                    elif "init_api" in str(checkbox):
+                        checkbox.configure(text=self.locale_manager.get_text("gui.buttons.init_api"))
+
+        if hasattr(self, 'api_frame'):
+            self.api_frame.configure(text=self.locale_manager.get_text("gui.layout.api_config"))
+            self.services_frame.configure(text=self.locale_manager.get_text("gui.layout.active_services"))
+
+        if hasattr(self, 'dir_frame'):
+            self.dir_frame.configure(text=self.locale_manager.get_text("gui.layout.folder_selection"))
+            self.drop_label.configure(text=self.locale_manager.get_text("gui.dropzone.hint"))
+            for child in self.nav_frame.winfo_children():
+                if isinstance(child, ttk.Button):
+                    child.configure(text=self.locale_manager.get_text("gui.buttons.browse"))
+
+        if hasattr(self, 'edit_genres_button'):
+            self.edit_genres_button.configure(text=self.locale_manager.get_text("gui.buttons.edit_genres"))
+        if hasattr(self, 'load_keys_button'):
+            self.load_keys_button.configure(text=self.locale_manager.get_text("gui.buttons.load_keys"))
+        if hasattr(self, 'init_api_button'):
+            self.init_api_button.configure(text=self.locale_manager.get_text("gui.buttons.init_api"))
+        if hasattr(self, 'progress_label'):
+            self.progress_label.configure(text=self.locale_manager.get_text("gui.status.waiting"))
+        if hasattr(self, 'process_button'):
+            self.process_button.configure(text=self.locale_manager.get_text("gui.buttons.start_processing"))
+        if hasattr(self, 'cancel_button'):
+            self.cancel_button.configure(text=self.locale_manager.get_text("gui.buttons.cancel"))
+        if hasattr(self, 'clear_button'):
+            self.clear_button.configure(text=self.locale_manager.get_text("gui.buttons.clear_log"))
+        if hasattr(self, 'export_button'):
+            self.export_button.configure(text=self.locale_manager.get_text("gui.buttons.export_logs"))
 
     def open_mapping_editor(self):
         """Ouvre l'éditeur de mapping de genres."""
-        GenreMappingEditor(self.root)
+        GenreMappingEditor(self.root, self.locale_manager)
 
     def load_api_keys_file(self):
         filename = filedialog.askopenfilename(
@@ -1115,36 +1364,6 @@ class MetadataManagerGUI:
             except Exception as e:
                 messagebox.showerror("Erreur", f"Erreur lors du chargement: {str(e)}")
 
-    def setup_directory_selection(self, parent):
-        dir_frame = ttk.LabelFrame(parent, text="Sélection du dossier", padding="5")
-        dir_frame.grid(row=2, column=0, columnspan=2, sticky="nsew")
-
-        # Zone navigation classique
-        nav_frame = ttk.Frame(dir_frame)
-        nav_frame.grid(row=0, column=0, sticky="ew", padx=5)
-
-        ttk.Entry(nav_frame, textvariable=self.selected_directory, state='readonly').pack(side="left", fill="x", expand=True)
-        ttk.Button(nav_frame, text="Parcourir", command=self.browse_directory).pack(side="left", padx=5)
-
-        # Zone drag & drop
-        drop_frame = ttk.Frame(dir_frame, style='Drop.TFrame', height=100)
-        drop_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        drop_frame.grid_propagate(False)  # Maintient la hauteur fixe
-
-        label = ttk.Label(drop_frame, text="Déposez vos fichiers ou dossiers ici")
-        label.place(relx=0.5, rely=0.5, anchor="center")
-
-        drop_frame.drop_target_register(DND_FILES)
-        drop_frame.dnd_bind('<<Drop>>', self.handle_drop)
-
-        # Bouton traitement
-        self.process_button = ttk.Button(dir_frame, text="Lancer le traitement",
-                                       command=self.process_directory,
-                                       state="disabled")
-        self.process_button.grid(row=2, column=0, pady=5)
-
-        dir_frame.columnconfigure(0, weight=1)
-
     def handle_drop(self, event):
         path = event.data
         # Nettoyer le chemin des caractères spéciaux
@@ -1155,61 +1374,14 @@ class MetadataManagerGUI:
                 if path.lower().endswith('.mp3'):
                     directory = os.path.dirname(path)
                 else:
-                    self.log_message("❌ Le fichier doit être au format MP3")
+                    self.log_message(self.locale_manager.get_text("messages.error.mp3_only"))
                     return
             else:
                 directory = path
 
             self.selected_directory.set(directory)
             self.process_button['state'] = 'normal'
-            self.log_message(f"✅ Dossier ajouté : {directory}")
-
-    def setup_log_section(self, parent):
-        """Configure la section de log et progression."""
-        log_frame = ttk.LabelFrame(parent, text="Progression", padding="5")
-        log_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=5)
-
-        progress_info_frame = ttk.Frame(log_frame)
-        progress_info_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=2)
-
-        self.progress_label = ttk.Label(progress_info_frame, text="En attente...")
-        self.progress_label.pack(side="left", padx=5)
-
-        self.progress_percent = ttk.Label(progress_info_frame, text="0%")
-        self.progress_percent.pack(side="right", padx=5)
-
-        self.log_text = tk.Text(log_frame, height=15, width=80, wrap=tk.WORD)
-        self.log_text.grid(row=1, column=0, sticky="nsew", pady=5)
-
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical",
-                                command=self.log_text.yview)
-        scrollbar.grid(row=1, column=1, sticky="ns")
-        self.log_text['yscrollcommand'] = scrollbar.set
-
-        # Barre de progression
-        self.progress = ttk.Progressbar(log_frame, mode='determinate', length=300)
-        self.progress.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
-
-        # Boutons de contrôle
-        button_frame = ttk.Frame(log_frame)
-        button_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=5)
-
-        self.cancel_button = ttk.Button(button_frame, text="Annuler",
-                                      command=self.cancel_processing,
-                                      state="disabled")
-        self.cancel_button.pack(side="left", padx=5)
-
-        self.clear_button = ttk.Button(button_frame, text="Effacer le log",
-                                     command=self.clear_log)
-        self.clear_button.pack(side="left", padx=5)
-
-        self.export_button = ttk.Button(button_frame, text="Exporter les logs",
-                                    command=self.export_logs)
-        self.export_button.pack(side="left", padx=5)
-
-        log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(1, weight=1)
-        parent.rowconfigure(4, weight=1)
+            self.log_message(self.locale_manager.get_text("logs.folder.added", None, directory))
 
     def initialize_apis(self):
             """Initialise les APIs avec les informations fournies."""
@@ -1227,24 +1399,27 @@ class MetadataManagerGUI:
             enabled_services = [name for name, enabled in config['services'].items() if enabled]
             if not enabled_services:
                 messagebox.showerror(
-                    "Erreur de configuration",
-                    "Au moins un service doit être activé."
+                    self.locale_manager.get_text("messages.error.api_config"),
+                    self.locale_manager.get_text("messages.error.api_required")
                 )
                 return
 
             try:
-                self.log_message("Initialisation des APIs...")
+                self.log_message(self.locale_manager.get_text("api.initialization.start"))
                 self.config_manager.save_config(config)
                 self.progress['value'] = 0
 
                 # Création préalable de la liste des étapes
                 services_steps = []
                 if config['services']['musicbrainz']:
-                    services_steps.append(("Connexion à MusicBrainz...", 33))
+                    services_steps.append((self.locale_manager.get_text("api.initialization.connection.musicbrainz"), 33))
+
+                self.api_manager = APIManager(config, self.locale_manager)
+
                 if config['services']['spotify']:
-                    services_steps.append(("Connexion à Spotify...", 66))
+                    services_steps.append((self.locale_manager.get_text("api.initialization.connection.spotify"), 66))
                 if config['services']['discogs']:
-                    services_steps.append(("Connexion à Discogs...", 100))
+                    services_steps.append((self.locale_manager.get_text("api.initialization.connection.discogs"), 100))
 
                 def init_step(step):
                     if step < len(services_steps):
@@ -1254,13 +1429,13 @@ class MetadataManagerGUI:
                         self.progress['value'] = progress
 
                         if step == 0:  # Initialisation des APIs au premier pas
-                            self.api_manager = APIManager(config)
+                            self.api_manager = APIManager(config, self.locale_manager)
 
                         self.root.after(500, lambda: init_step(step + 1))
                     else:
                         if self.log_text:  # Vérification que log_text existe
-                            self.log_message("Configuration terminée")
-                            self.log_message("✅ Initialisation terminée avec succès!")
+                            self.log_message(self.locale_manager.get_text("api.initialization.complete"))
+                            self.log_message(self.locale_manager.get_text("api.initialization.success_final"))
 
                 # Démarrer l'initialisation uniquement s'il y a des services à initialiser
                 if services_steps:
@@ -1269,31 +1444,28 @@ class MetadataManagerGUI:
                     self.log_message("Aucun service à initialiser")
 
             except Exception as e:
-                error_msg = f"Une erreur est survenue lors de l'initialisation : {str(e)}"
-                messagebox.showerror("Erreur d'initialisation", error_msg)
+                error_msg = self.locale_manager.get_text(
+                    "api.initialization.error.message",
+                    None,
+                    str(e)
+                )
+                messagebox.showerror(
+                    self.locale_manager.get_text("api.initialization.error.title"),
+                    error_msg
+                )
                 if self.log_text:  # Vérification que log_text existe
-                    self.log_message(f"❌ Erreur : {str(e)}")
+                    self.log_message(
+                        self.locale_manager.get_text(
+                            "api.initialization.error.log",
+                            None,
+                            str(e)
+                        )
+                    )
 
     def toggle_service(self, service_name: str, var: tk.BooleanVar):
         """Active ou désactive un service API."""
         self.config_manager.set_service_state(service_name, var.get())
         self.log_message(f"Service {service_name}: {'activé' if var.get() else 'désactivé'}")
-
-    def start_event_processing(self):
-        """Démarre le traitement des événements en arrière-plan."""
-        def process_events():
-            while True:
-                try:
-                    event = self.event_queue.get_nowait()
-                    if event[0] == "progress":
-                        self.handle_progress_update(event[1], event[2])
-                    elif event[0] == "log":
-                        self.log_message(event[1])
-                except Empty:
-                    break
-            self.root.after(100, process_events)
-
-        self.root.after(100, process_events)
 
     def browse_directory(self):
         """Ouvre une boîte de dialogue pour sélectionner un dossier."""
@@ -1306,35 +1478,54 @@ class MetadataManagerGUI:
     def process_directory(self):
         """Lance le traitement des fichiers MP3 du dossier sélectionné."""
         if not self.api_manager:
-            messagebox.showerror("Erreur", "Veuillez d'abord initialiser les APIs.")
+            messagebox.showerror(
+            self.locale_manager.get_text("messages.error.api_config"),
+            self.locale_manager.get_text("messages.error.initialize_first")
+            )
             return
 
         directory = Path(self.selected_directory.get())
         if not directory.exists():
-            messagebox.showerror("Erreur", "Le dossier sélectionné n'existe pas.")
+            self.log_message(self.locale_manager.get_text("logs.folder.not_found"))
             return
+
+        self.log_message(self.locale_manager.get_text("logs.processing.start", None, str(directory)))
+        self.log_message(self.locale_manager.get_text("logs.processing.analyzing"))
 
         self.processing = True
         self.process_button['state'] = 'disabled'
         self.cancel_button['state'] = 'normal'
         self.progress['value'] = 0
         self.progress_percent['text'] = "0%"
-        self.progress_label['text'] = "En attente..."
+        self.progress_label['text'] = self.locale_manager.get_text("gui.status.waiting")
 
         def process_thread():
             try:
-                self.log_message("\n🔍 Création du processeur MP3...")
-                self.mp3_processor = MP3Processor(self.api_manager)
-                self.log_message("✅ Processeur MP3 créé avec succès")
+                self.log_message(self.locale_manager.get_text("processor.analysis.creating_processor"))
+                self.mp3_processor = MP3Processor(self.api_manager, self.locale_manager)
+                self.log_message(self.locale_manager.get_text("processor.progress.processor_ready"))
 
-                self.log_message(f"📁 Traitement du dossier: {directory}")
+                self.log_message(self.locale_manager.get_text(
+                    "processor.progress.processing_directory",
+                    None,
+                    str(directory)
+                ))
+
                 self.mp3_processor.process_directory(directory, self.update_progress)
 
             except Exception as e:
-                error_msg = f"\n❌ Erreur critique: {str(e)}"
+                error_msg = self.locale_manager.get_text(
+                    "messages.error.critical",
+                    None,
+                    str(e)
+                )
                 self.log_message(error_msg)
                 import traceback
-                self.log_message(f"\nDétails de l'erreur:\n{''.join(traceback.format_tb(e.__traceback__))}")
+                self.log_message(self.locale_manager.get_text(
+                    "messages.error.details",
+                    None,
+                    ''.join(traceback.format_tb(e.__traceback__))
+                ))
             finally:
                 self.processing = False
                 self.root.after(0, self.reset_ui_after_processing)
@@ -1358,7 +1549,7 @@ class MetadataManagerGUI:
         """Annule le traitement en cours."""
         if self.mp3_processor and self.processing:
             self.mp3_processor.cancel_processing()
-            self.log_message("\n⚠️ Annulation du traitement en cours...")
+            self.log_message(self.locale_manager.get_text("logs.processing.cancel"))
             self.cancel_button['state'] = 'disabled'
 
     def reset_ui_after_processing(self):
@@ -1370,8 +1561,11 @@ class MetadataManagerGUI:
             hasattr(self.mp3_processor, 'error_records') and
             self.mp3_processor.error_records):
             self.log_message(
-                f"\n⚠️ {len(self.mp3_processor.error_records)} erreurs "
-                "ont été enregistrées dans 'error_log.csv'"
+                self.locale_manager.get_text(
+                    "logs.processing.errors",
+                    None,
+                    len(self.mp3_processor.error_records)
+            )
             )
 
     def clear_log(self):
@@ -1379,7 +1573,7 @@ class MetadataManagerGUI:
         self.log_text.delete(1.0, tk.END)
         self.progress['value'] = 0
         self.progress_percent['text'] = "0%"
-        self.progress_label['text'] = "En attente..."
+        self.progress_label['text'] = self.locale_manager.get_text("waiting")
 
     def log_message(self, message: str):
         """Ajoute un message au log."""
@@ -1440,21 +1634,28 @@ class MetadataManagerGUI:
                         writer.writeheader()
                         writer.writerows(self.mp3_processor.not_found_records)
 
-            self.log_message(f"\n✅ Logs exportés dans le dossier 'logs'")
+            self.log_message(self.locale_manager.get_text("logs.export.success"))
         except Exception as e:
-            messagebox.showerror("Erreur d'export", f"Erreur lors de l'export des logs: {str(e)}")
-            self.log_message(f"❌ Erreur d'export : {str(e)}")
+            messagebox.showerror(
+                self.locale_manager.get_text("logs.export.error.title"),
+                self.locale_manager.get_text("logs.export.error.message", None, str(e))
+            )
+            self.log_message(self.locale_manager.get_text("logs.export.error.log", None, str(e)))
 
 class GenreMappingEditor:
-    def __init__(self, parent):
+    def __init__(self, parent, locale_manager):
+        self.locale_manager = locale_manager
         self.window = tk.Toplevel(parent)
-        self.window.title("Éditeur de Mapping de Genres")
+        self.window.title(self.locale_manager.get_text("gui.genre_editor.title"))
         self.window.geometry("800x600")
         self.window.minsize(800, 600)
 
         # Définition des en-têtes pour chaque type de mapping
         self.headers = {
-            'genres': ('Genre Source', 'Genre Mappé'),
+            'genres': (
+                self.locale_manager.get_text("gui.genre_editor.columns.source_genre"),
+                self.locale_manager.get_text("gui.genre_editor.columns.mapped_genre")
+            ),
             'labels': ('Label', 'Genre'),
             'artists': ('Artiste', 'Genre')
         }
@@ -1468,9 +1669,9 @@ class GenreMappingEditor:
         self.labels_frame = ttk.Frame(self.notebook)
         self.artists_frame = ttk.Frame(self.notebook)
 
-        self.notebook.add(self.genres_frame, text='Genres')
-        self.notebook.add(self.labels_frame, text='Labels')
-        self.notebook.add(self.artists_frame, text='Artistes')
+        self.notebook.add(self.genres_frame, text=self.locale_manager.get_text("gui.genre_editor.tabs.genres"))
+        self.notebook.add(self.labels_frame, text=self.locale_manager.get_text("gui.genre_editor.tabs.labels"))
+        self.notebook.add(self.artists_frame, text=self.locale_manager.get_text("gui.genre_editor.tabs.artists"))
 
         # Initialisation des tableaux
         self.setup_treeview(self.genres_frame, 'genres')
@@ -1488,11 +1689,11 @@ class GenreMappingEditor:
         button_frame = ttk.Frame(parent)
         button_frame.pack(fill='x', padx=5, pady=5)
 
-        ttk.Button(button_frame, text="Ajouter",
+        ttk.Button(button_frame, text=self.locale_manager.get_text("gui.genre_editor.buttons.add"),
                   command=lambda: self.add_item(mapping_type)).pack(side='left', padx=2)
-        ttk.Button(button_frame, text="Supprimer",
+        ttk.Button(button_frame, text=self.locale_manager.get_text("gui.genre_editor.buttons.delete"),
                   command=lambda: self.delete_item(mapping_type)).pack(side='left', padx=2)
-        ttk.Button(button_frame, text="Éditer",
+        ttk.Button(button_frame, text=self.locale_manager.get_text("gui.genre_editor.buttons.edit"),
                   command=lambda: self.edit_item(mapping_type)).pack(side='left', padx=2)
 
         # Création du Treeview
@@ -1522,7 +1723,13 @@ class GenreMappingEditor:
         tree.bind('<Double-1>', lambda e: self.edit_item(mapping_type))
 
     def add_item(self, mapping_type):
-        dialog = EditMappingDialog(self.window, "", "", self.headers[mapping_type])
+        dialog = EditMappingDialog(
+            parent=self.window,
+            source="",
+            mapped="",
+            headers=self.headers[mapping_type],
+            locale_manager=self.locale_manager
+        )
         if dialog.result:
             source, mapped = dialog.result
             tree = getattr(self, f"{mapping_type}_tree")
@@ -1535,9 +1742,13 @@ class GenreMappingEditor:
             return
 
         current_values = tree.item(selected[0])['values']
-        dialog = EditMappingDialog(self.window, current_values[0], current_values[1],
-                                 self.headers[mapping_type])
-
+        dialog = EditMappingDialog(
+            parent=self.window,
+            source=current_values[0],
+            mapped=current_values[1],
+            headers=self.headers[mapping_type],
+            locale_manager=self.locale_manager
+        )
         if dialog.result:
             source, mapped = dialog.result
             tree.item(selected[0], values=(source, mapped))
@@ -1553,10 +1764,15 @@ class GenreMappingEditor:
         control_frame = ttk.Frame(self.window)
         control_frame.pack(fill='x', padx=5, pady=5)
 
-        ttk.Button(control_frame, text="Sauvegarder",
-                  command=self.save_mappings).pack(side='left', padx=5)
-        ttk.Button(control_frame, text="Fermer",
-                  command=self.window.destroy).pack(side='right', padx=5)
+        save_btn = ttk.Button(control_frame, 
+                            text=self.locale_manager.get_text("gui.genre_editor.buttons.save"),
+                            command=self.save_mappings)
+        save_btn.pack(side='left', padx=5)
+
+        close_btn = ttk.Button(control_frame, 
+                             text=self.locale_manager.get_text("gui.genre_editor.buttons.close"),
+                             command=self.window.destroy)
+        close_btn.pack(side='right', padx=5)
 
     def load_mappings(self):
         try:
@@ -1599,10 +1815,13 @@ class GenreMappingEditor:
             messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde: {str(e)}")
 
 class EditMappingDialog:
-    def __init__(self, parent, source="", mapped="", headers=('Source', 'Mapped')):
+    def __init__(self, parent, source="", mapped="", headers=('Source', 'Mapped'),locale_manager=None):
+        if locale_manager is None:
+            raise ValueError("locale_manager cannot be None")
+        self.locale_manager = locale_manager
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("Éditer le mapping")
-        self.dialog.geometry("400x150")
+        self.dialog.title(self.locale_manager.get_text("gui.genre_editor.dialog.title"))
+        self.dialog.geometry("400x200")
         self.result = None
 
         # Champs de saisie
@@ -1620,8 +1839,8 @@ class EditMappingDialog:
         button_frame = ttk.Frame(self.dialog)
         button_frame.pack(fill='x', padx=5, pady=10)
 
-        ttk.Button(button_frame, text="OK", command=self.ok).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Annuler", command=self.cancel).pack(side='right', padx=5)
+        ttk.Button(button_frame, text=self.locale_manager.get_text("gui.genre_editor.dialog.buttons.ok"), command=self.ok).pack(side='left', padx=5)
+        ttk.Button(button_frame, text=self.locale_manager.get_text("gui.genre_editor.dialog.buttons.cancel"), command=self.cancel).pack(side='right', padx=5)
 
         self.dialog.transient(parent)
         self.dialog.grab_set()

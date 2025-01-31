@@ -1,0 +1,117 @@
+{
+  "gui": {
+    "menu": {
+      "language": "Idioma"
+    },
+    "app_title": "AMTU - Apple Music Tag Updater MP3",
+    "layout": {
+      "api_config": "Configuração da API",
+      "active_services": "Serviços ativos",
+      "services": {
+        "musicbrainz": "MusicBrainz",
+        "spotify": "Spotify",
+        "discogs": "Discogs"
+      },
+      "folder_selection": "Seleção de pasta",
+      "progress": "Progresso"
+    },
+    "genre_editor": {
+      "title": "Editor de Mapeamento de Gêneros",
+      "tabs": {
+        "genres": "Gêneros",
+        "labels": "Gravadoras",
+        "artists": "Artistas"
+      },
+      "buttons": {
+        "add": "Adicionar",
+        "delete": "Excluir",
+        "edit": "Editar",
+        "save": "Salvar",
+        "close": "Fechar"
+      },
+      "columns": {
+        "source_genre": "Gênero Fonte",
+        "mapped_genre": "Gênero Mapeado"
+      },
+      "dialog": {
+        "title": "Editor de Mapeamento",
+        "source_label": "Gênero Fonte",
+        "mapped_label": "Gênero Mapeado",
+        "buttons": {
+          "ok": "OK",
+          "cancel": "Cancelar"
+        }
+      }
+    },
+    "buttons": {
+      "browse": "Procurar",
+      "init_api": "Inicializar APIs",
+      "load_keys": "Carregar Chaves API",
+      "edit_genres": "Editar Gêneros",
+      "start_processing": "Iniciar Processamento",
+      "cancel": "Cancelar",
+      "clear_log": "Limpar registro",
+      "export_logs": "Exportar registros"
+    },
+    "status": {
+      "waiting": "Aguardando...",
+      "processing_file": "Arquivo {0}/{1}",
+      "processing_complete": "Processamento concluído!"
+    },
+    "dropzone": {
+      "hint": "Arraste seus arquivos ou pastas aqui"
+    }
+  },
+  "api": {
+    "initialization": {
+      "start": "Inicializando APIs...",
+      "success": {
+        "musicbrainz": "MusicBrainz inicializado com sucesso"
+      },
+      "complete": "Configuração concluída",
+      "success_final": "✅ Inicialização concluída com sucesso!",
+      "connection": {
+        "musicbrainz": "Conectando ao MusicBrainz...",
+        "spotify": "Conectando ao Spotify...",
+        "discogs": "Conectando ao Discogs..."
+      }
+    }
+  },
+  "processor": {
+    "progress": {
+      "start": "🔍 Analisando arquivos - {0} arquivos encontrados",
+      "processing_album": "\n📀 Processando álbum: {0}",
+      "file_update": "[{0}/{1}] Atualizando {2}"
+    },
+    "analysis": {
+      "file_grouping": "🔍 Agrupando arquivos por álbum/EP..."
+    },
+    "summary": {
+      "header": "📊 Resumo das atualizações:",
+      "source": "  • Fonte utilizada: {0}",
+      "files": "  • Arquivos processados: {0}",
+      "updates": "  • Arquivos atualizados: {0}",
+      "labels": "  • Gravadoras encontradas ({0} atualizações):",
+      "catalogs": "  • Números de catálogo encontrados ({0} atualizações):",
+      "genres": "  • Gêneros atualizados ({0} atualizações):"
+    },
+    "statistics": {
+      "header": "📈 Estatísticas:",
+      "not_found": "  • Arquivos não encontrados: {0}",
+      "errors": "  • Erros: {0}"
+    }
+  },
+  "messages": {
+    "error": {
+      "api_config": "Erro de configuração",
+      "api_required": "Pelo menos um serviço deve estar ativo.",
+      "folder_not_found": "A pasta selecionada não existe.",
+      "initialize_first": "Por favor, inicialize as APIs primeiro.",
+      "mp3_only": "❌ O arquivo deve estar no formato MP3"
+    },
+    "success": {
+      "config_loaded": "Configuração carregada com sucesso",
+      "processing_complete": "✅ Processamento concluído!"
+    }
+  }
+}
