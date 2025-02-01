@@ -64,4 +64,165 @@ To change the language:
 3. Choose your preferred language
 4. The interface updates automatically
 
-[Rest of the content remains the same but translated]
+## 🔧 Prerequisites
+
+- Python 3.7 or higher
+- The following Python libraries:
+  - tkinter
+  - tkinterdnd2
+  - mutagen
+  - spotipy
+  - discogs-client
+  - musicbrainzngs
+  - requests
+
+## 📦 Installation and API Configuration
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/AMTU.git
+cd AMTU
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. API Configuration:
+
+- **MusicBrainz**: No configuration needed (enabled by default)
+
+- **Spotify API** [(Create an app)](https://developer.spotify.com/dashboard):
+  - Create a Spotify developer account
+  - Create a new application
+  - Get your `client_id` and `client_secret`
+
+- **Discogs API** [(Create a token)](https://www.discogs.com/settings/developers):
+  - Create a Discogs account
+  - Go to developer settings
+  - Generate a new personal token
+
+4. Create an `api_keys.json` file with your API keys:
+```json
+{
+    "spotify": {
+        "client_id": "your_client_id",
+        "client_secret": "your_client_secret"
+    },
+    "discogs": {
+        "token": "your_token"
+    }
+}
+```
+
+## 🚀 Usage
+
+1. Launch the program:
+```bash
+python AMTU.py
+```
+
+2. In the graphical interface:
+   - Load your API keys
+   - Select services to use (MusicBrainz, Spotify, Discogs)
+   - Initialize APIs
+   - [Optional] Configure your genre mapping rules
+   - Select a folder containing your MP3 files (or use drag & drop)
+   - Start processing
+
+## 📝 Logs and Reports
+
+AMTU generates several log files:
+- `error_log.csv`: List of encountered errors
+- `not_found_log.csv`: List of files not found
+- Exportable processing logs with timestamp
+
+## ⚙️ Configuration
+
+### API Services
+Services can be enabled/disabled individually:
+- MusicBrainz (enabled by default)
+- Spotify (requires API keys)
+- Discogs (requires token)
+
+### Genre Configuration
+The genre mapping editor allows you to:
+1. Define genre mapping rules via graphical interface
+2. Manage three types of rules:
+   - Genre mappings (conversion from one genre to another)
+   - Label-based rules (genre assignment based on label)
+   - Artist-based rules (genre assignment based on artist)
+3. Configurations are saved in `genre_mappings.json`
+
+To access the editor:
+1. Launch AMTU
+2. Click the "Edit Mappings" button
+3. Use tabs to manage each type of mapping
+4. Double-click an entry to modify it
+5. Use Add/Delete/Edit buttons to manage your rules
+6. Don't forget to save your changes
+
+## 📁 Configuration Files
+
+- `api_keys.json`: API key configuration
+- `genre_mappings.json`: Genre mapping rules configuration
+  ```json
+  {
+    "genres": {
+      "dnb": "Drum & Bass",
+      "jungle": "Drum & Bass"
+    },
+    "labels": {
+      "hospital records": "Drum & Bass",
+      "ram records": "Drum & Bass"
+    },
+    "artists": {
+      "netsky": "Drum & Bass",
+      "high contrast": "Drum & Bass"
+    }
+  }
+  ```
+- `locales/`: Folder containing translation files
+  ```
+  locales/
+  ├── en.json    # English
+  ├── fr.json    # French
+  ├── it.json    # Italian
+  ├── es.json    # Spanish
+  └── pt.json    # Portuguese
+  ```
+
+## 🔨 For Developers
+
+### Code Structure
+- **AMTU.py**: Main program and graphical interface
+- **genre_manager.py**: Genre management and detection
+- **models.py**: Data models and structures
+  ```python
+  @dataclass
+  class TrackMetadata:
+      title: str               # Track title
+      artist: str             # Main artist
+      album: str              # Album name
+      label: Optional[str]    # Label (stored in Composer)
+      catalog_number: Optional[str]  # Catalog number
+      artist_sort: Optional[str]     # Artist sort name
+      is_single: bool = False        # Single indicator
+      confidence: float = 0.0        # Match confidence score
+      source: str = ""              # Metadata source (MusicBrainz, Spotify, Discogs)
+      genre: Optional[str] = None   # Musical genre
+  ```
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to:
+1. Fork the project
+2. Create a feature branch
+3. Commit your changes
+4. Push to your fork
+5. Open a Pull Request
+
+## 📄 License
+
+This project is under the MIT License. See the [LICENSE](LICENSE) file for details.
