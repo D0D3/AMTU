@@ -66,7 +66,7 @@
     "initialization": {
       "start": "Initialisation des APIs...",
       "success": {
-      "musicbrainz": "MusicBrainz initialisé avec succès"
+        "musicbrainz": "MusicBrainz initialisé avec succès"
       },
       "complete": "Configuration terminée",
       "success_final": "✅ Initialisation terminée avec succès!",
@@ -81,10 +81,14 @@
     "progress": {
       "start": "🔍 Analyse des fichiers - {0} fichiers trouvés",
       "processing_album": "\n📀 Traitement de l'album: {0}",
-      "file_update": "[{0}/{1}] Mise à jour de {2}"
+      "file_update": "[{0}/{1}] Mise à jour de {2}",
+      "processor_ready": "Processeur prêt",
+      "processing_directory": "📁 Traitement du dossier: {0}"
     },
     "analysis": {
-      "file_grouping": "🔍 Regroupement des fichiers par album/EP..."
+      "file_grouping": "🔍 Regroupement des fichiers par album/EP...",
+      "creating_processor": "🔍 Création du processeur MP3...",
+      "processor_ready": "✅ Processeur MP3 créé avec succès"
     },
     "summary": {
       "header": "📊 Résumé des mises à jour:",
@@ -112,6 +116,15 @@
     "success": {
       "config_loaded": "Configuration chargée avec succès",
       "processing_complete": "✅ Traitement terminé!"
+    }
+  },
+  "logs": {
+    "folder": {
+      "added": "✅ Dossier ajouté : {0}"
+    },
+    "processing": {
+      "start": "Démarrage du traitement...",
+      "analyzing": "Analyse en cours..."
     }
   }
 }

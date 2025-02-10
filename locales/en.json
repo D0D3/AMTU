@@ -34,7 +34,7 @@
         "mapped_genre": "Mapped Genre"
       },
       "dialog": {
-        "title": "Edit Mapping",
+        "title": "Mapping Editor",
         "source_label": "Source Genre",
         "mapped_label": "Mapped Genre",
         "buttons": {
@@ -66,10 +66,10 @@
     "initialization": {
       "start": "Initializing APIs...",
       "success": {
-      "musicbrainz": "MusicBrainz initialized successfully"
+        "musicbrainz": "MusicBrainz initialized successfully"
       },
       "complete": "Configuration complete",
-      "success_final": "✅ Initialization successfully completed!",
+      "success_final": "✅ Initialization completed successfully!",
       "connection": {
         "musicbrainz": "Connecting to MusicBrainz...",
         "spotify": "Connecting to Spotify...",
@@ -81,10 +81,14 @@
     "progress": {
       "start": "🔍 Analyzing files - {0} files found",
       "processing_album": "\n📀 Processing album: {0}",
-      "file_update": "[{0}/{1}] Updating {2}"
+      "file_update": "[{0}/{1}] Updating {2}",
+      "processor_ready": "Processor ready",
+      "processing_directory": "📁 Processing directory: {0}"
     },
     "analysis": {
-      "file_grouping": "🔍 Grouping files by album/EP..."
+      "file_grouping": "🔍 Grouping files by album/EP...",
+      "creating_processor": "🔍 Creating MP3 processor...",
+      "processor_ready": "✅ MP3 processor created successfully"
     },
     "summary": {
       "header": "📊 Update Summary:",
@@ -103,15 +107,24 @@
   },
   "messages": {
     "error": {
-      "api_config": "Configuration error",
-      "api_required": "At least one service must be enabled.",
+      "api_config": "Configuration Error",
+      "api_required": "At least one service must be activated.",
       "folder_not_found": "Selected folder does not exist.",
-      "initialize_first": "Please initialize the APIs first.",
+      "initialize_first": "Please initialize APIs first.",
       "mp3_only": "❌ File must be in MP3 format"
     },
     "success": {
       "config_loaded": "Configuration loaded successfully",
       "processing_complete": "✅ Processing complete!"
+    }
+  },
+  "logs": {
+    "folder": {
+      "added": "✅ Folder added: {0}"
+    },
+    "processing": {
+      "start": "Starting processing...",
+      "analyzing": "Analysis in progress..."
     }
   }
 }

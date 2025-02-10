@@ -16,27 +16,27 @@
       "progress": "Progresso"
     },
     "genre_editor": {
-      "title": "Editor de Mapeamento de Gêneros",
+      "title": "Editor de Mapeamento de Géneros",
       "tabs": {
-        "genres": "Gêneros",
-        "labels": "Gravadoras",
+        "genres": "Géneros",
+        "labels": "Etiquetas",
         "artists": "Artistas"
       },
       "buttons": {
         "add": "Adicionar",
-        "delete": "Excluir",
+        "delete": "Eliminar",
         "edit": "Editar",
-        "save": "Salvar",
+        "save": "Guardar",
         "close": "Fechar"
       },
       "columns": {
-        "source_genre": "Gênero Fonte",
-        "mapped_genre": "Gênero Mapeado"
+        "source_genre": "Género Origem",
+        "mapped_genre": "Género Mapeado"
       },
       "dialog": {
         "title": "Editor de Mapeamento",
-        "source_label": "Gênero Fonte",
-        "mapped_label": "Gênero Mapeado",
+        "source_label": "Género Origem",
+        "mapped_label": "Género Mapeado",
         "buttons": {
           "ok": "OK",
           "cancel": "Cancelar"
@@ -47,57 +47,61 @@
       "browse": "Procurar",
       "init_api": "Inicializar APIs",
       "load_keys": "Carregar Chaves API",
-      "edit_genres": "Editar Gêneros",
-      "start_processing": "Iniciar Processamento",
+      "edit_genres": "Editar Géneros",
+      "start_processing": "Iniciar processamento",
       "cancel": "Cancelar",
-      "clear_log": "Limpar registro",
-      "export_logs": "Exportar registros"
+      "clear_log": "Limpar registo",
+      "export_logs": "Exportar registos"
     },
     "status": {
-      "waiting": "Aguardando...",
-      "processing_file": "Arquivo {0}/{1}",
+      "waiting": "A aguardar...",
+      "processing_file": "Ficheiro {0}/{1}",
       "processing_complete": "Processamento concluído!"
     },
     "dropzone": {
-      "hint": "Arraste seus arquivos ou pastas aqui"
+      "hint": "Arraste os seus ficheiros ou pastas aqui"
     }
   },
   "api": {
     "initialization": {
-      "start": "Inicializando APIs...",
+      "start": "A inicializar APIs...",
       "success": {
         "musicbrainz": "MusicBrainz inicializado com sucesso"
       },
       "complete": "Configuração concluída",
       "success_final": "✅ Inicialização concluída com sucesso!",
       "connection": {
-        "musicbrainz": "Conectando ao MusicBrainz...",
-        "spotify": "Conectando ao Spotify...",
-        "discogs": "Conectando ao Discogs..."
+        "musicbrainz": "A conectar ao MusicBrainz...",
+        "spotify": "A conectar ao Spotify...",
+        "discogs": "A conectar ao Discogs..."
       }
     }
   },
   "processor": {
     "progress": {
-      "start": "🔍 Analisando arquivos - {0} arquivos encontrados",
-      "processing_album": "\n📀 Processando álbum: {0}",
-      "file_update": "[{0}/{1}] Atualizando {2}"
+      "start": "🔍 A analisar ficheiros - {0} ficheiros encontrados",
+      "processing_album": "\n📀 A processar álbum: {0}",
+      "file_update": "[{0}/{1}] A atualizar {2}",
+      "processor_ready": "Processador pronto",
+      "processing_directory": "📁 A processar pasta: {0}"
     },
     "analysis": {
-      "file_grouping": "🔍 Agrupando arquivos por álbum/EP..."
+      "file_grouping": "🔍 A agrupar ficheiros por álbum/EP...",
+      "creating_processor": "🔍 A criar processador MP3...",
+      "processor_ready": "✅ Processador MP3 criado com sucesso"
     },
     "summary": {
       "header": "📊 Resumo das atualizações:",
       "source": "  • Fonte utilizada: {0}",
-      "files": "  • Arquivos processados: {0}",
-      "updates": "  • Arquivos atualizados: {0}",
-      "labels": "  • Gravadoras encontradas ({0} atualizações):",
+      "files": "  • Ficheiros processados: {0}",
+      "updates": "  • Ficheiros atualizados: {0}",
+      "labels": "  • Etiquetas encontradas ({0} atualizações):",
       "catalogs": "  • Números de catálogo encontrados ({0} atualizações):",
-      "genres": "  • Gêneros atualizados ({0} atualizações):"
+      "genres": "  • Géneros atualizados ({0} atualizações):"
     },
     "statistics": {
       "header": "📈 Estatísticas:",
-      "not_found": "  • Arquivos não encontrados: {0}",
+      "not_found": "  • Ficheiros não encontrados: {0}",
       "errors": "  • Erros: {0}"
     }
   },
@@ -106,12 +110,21 @@
       "api_config": "Erro de configuração",
       "api_required": "Pelo menos um serviço deve estar ativo.",
       "folder_not_found": "A pasta selecionada não existe.",
-      "initialize_first": "Por favor, inicialize as APIs primeiro.",
-      "mp3_only": "❌ O arquivo deve estar no formato MP3"
+      "initialize_first": "Por favor, inicialize primeiro as APIs.",
+      "mp3_only": "❌ O ficheiro deve estar no formato MP3"
     },
     "success": {
       "config_loaded": "Configuração carregada com sucesso",
       "processing_complete": "✅ Processamento concluído!"
+    }
+  },
+  "logs": {
+    "folder": {
+      "added": "✅ Pasta adicionada: {0}"
+    },
+    "processing": {
+      "start": "A iniciar processamento...",
+      "analyzing": "Análise em curso..."
     }
   }
 }

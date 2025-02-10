@@ -16,14 +16,14 @@
       "progress": "Progreso"
     },
     "genre_editor": {
-      "title": "Editor de Asignación de Géneros",
+      "title": "Editor de Mapeo de Géneros",
       "tabs": {
         "genres": "Géneros",
-        "labels": "Sellos",
+        "labels": "Etiquetas",
         "artists": "Artistas"
       },
       "buttons": {
-        "add": "Agregar",
+        "add": "Añadir",
         "delete": "Eliminar",
         "edit": "Editar",
         "save": "Guardar",
@@ -31,14 +31,14 @@
       },
       "columns": {
         "source_genre": "Género Origen",
-        "mapped_genre": "Género Asignado"
+        "mapped_genre": "Género Mapeado"
       },
       "dialog": {
-        "title": "Editor de Asignación",
+        "title": "Editor de Mapeo",
         "source_label": "Género Origen",
-        "mapped_label": "Género Asignado",
+        "mapped_label": "Género Mapeado",
         "buttons": {
-          "ok": "Aceptar",
+          "ok": "OK",
           "cancel": "Cancelar"
         }
       }
@@ -48,7 +48,7 @@
       "init_api": "Inicializar APIs",
       "load_keys": "Cargar Claves API",
       "edit_genres": "Editar Géneros",
-      "start_processing": "Iniciar Procesamiento",
+      "start_processing": "Iniciar procesamiento",
       "cancel": "Cancelar",
       "clear_log": "Limpiar registro",
       "export_logs": "Exportar registros"
@@ -59,7 +59,7 @@
       "processing_complete": "¡Procesamiento completado!"
     },
     "dropzone": {
-      "hint": "Arrastre sus archivos o carpetas aquí"
+      "hint": "Arrastra tus archivos o carpetas aquí"
     }
   },
   "api": {
@@ -81,17 +81,21 @@
     "progress": {
       "start": "🔍 Analizando archivos - {0} archivos encontrados",
       "processing_album": "\n📀 Procesando álbum: {0}",
-      "file_update": "[{0}/{1}] Actualizando {2}"
+      "file_update": "[{0}/{1}] Actualizando {2}",
+      "processor_ready": "Procesador listo",
+      "processing_directory": "📁 Procesando directorio: {0}"
     },
     "analysis": {
-      "file_grouping": "🔍 Agrupando archivos por álbum/EP..."
+      "file_grouping": "🔍 Agrupando archivos por álbum/EP...",
+      "creating_processor": "🔍 Creando procesador MP3...",
+      "processor_ready": "✅ Procesador MP3 creado con éxito"
     },
     "summary": {
       "header": "📊 Resumen de actualizaciones:",
       "source": "  • Fuente utilizada: {0}",
       "files": "  • Archivos procesados: {0}",
       "updates": "  • Archivos actualizados: {0}",
-      "labels": "  • Sellos encontrados ({0} actualizaciones):",
+      "labels": "  • Etiquetas encontradas ({0} actualizaciones):",
       "catalogs": "  • Números de catálogo encontrados ({0} actualizaciones):",
       "genres": "  • Géneros actualizados ({0} actualizaciones):"
     },
@@ -112,6 +116,15 @@
     "success": {
       "config_loaded": "Configuración cargada con éxito",
       "processing_complete": "✅ ¡Procesamiento completado!"
+    }
+  },
+  "logs": {
+    "folder": {
+      "added": "✅ Carpeta agregada: {0}"
+    },
+    "processing": {
+      "start": "Iniciando procesamiento...",
+      "analyzing": "Análisis en curso..."
     }
   }
 }

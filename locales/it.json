@@ -48,7 +48,7 @@
       "init_api": "Inizializza API",
       "load_keys": "Carica Chiavi API",
       "edit_genres": "Modifica Generi",
-      "start_processing": "Avvia Elaborazione",
+      "start_processing": "Avvia elaborazione",
       "cancel": "Annulla",
       "clear_log": "Pulisci log",
       "export_logs": "Esporta log"
@@ -81,14 +81,18 @@
     "progress": {
       "start": "🔍 Analisi dei file - {0} file trovati",
       "processing_album": "\n📀 Elaborazione album: {0}",
-      "file_update": "[{0}/{1}] Aggiornamento di {2}"
+      "file_update": "[{0}/{1}] Aggiornamento di {2}",
+      "processor_ready": "Processore pronto",
+      "processing_directory": "📁 Elaborazione cartella: {0}"
     },
     "analysis": {
-      "file_grouping": "🔍 Raggruppamento file per album/EP..."
+      "file_grouping": "🔍 Raggruppamento file per album/EP...",
+      "creating_processor": "🔍 Creazione del processore MP3...",
+      "processor_ready": "✅ Processore MP3 creato con successo"
     },
     "summary": {
       "header": "📊 Riepilogo aggiornamenti:",
-      "source": "  • Sorgente utilizzata: {0}",
+      "source": "  • Fonte utilizzata: {0}",
       "files": "  • File elaborati: {0}",
       "updates": "  • File aggiornati: {0}",
       "labels": "  • Etichette trovate ({0} aggiornamenti):",
@@ -104,7 +108,7 @@
   "messages": {
     "error": {
       "api_config": "Errore di configurazione",
-      "api_required": "Deve essere attivato almeno un servizio.",
+      "api_required": "È necessario attivare almeno un servizio.",
       "folder_not_found": "La cartella selezionata non esiste.",
       "initialize_first": "Inizializza prima le API.",
       "mp3_only": "❌ Il file deve essere in formato MP3"
@@ -112,6 +116,15 @@
     "success": {
       "config_loaded": "Configurazione caricata con successo",
       "processing_complete": "✅ Elaborazione completata!"
+    }
+  },
+  "logs": {
+    "folder": {
+      "added": "✅ Cartella aggiunta: {0}"
+    },
+    "processing": {
+      "start": "Avvio elaborazione...",
+      "analyzing": "Analisi in corso..."
     }
   }
 }
