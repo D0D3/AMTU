@@ -74,7 +74,7 @@ class GenreManager:
     def load_custom_mappings(self, file_path):
         """Charge des mappings personnalisés depuis un fichier JSON."""
         try:
-            with open(file_path, 'r') as f:
+            with open(CONFIG_DIR / 'genre_mappings.json', 'r') as f:
                 custom_mappings = json.load(f)
                 self.genre_mapping.update(custom_mappings.get('genres', {}))
                 self.label_genre_rules.update(custom_mappings.get('labels', {}))

@@ -1,0 +1,133 @@
+{
+    "gui": {
+      "menu": {
+        "language": "Sprache"
+      },
+      "app_title": "AMTU - Apple Music Tag Updater MP3",
+      "layout": {
+        "api_config": "API-Konfiguration",
+        "active_services": "Aktive Dienste",
+        "services": {
+          "musicbrainz": "MusicBrainz",
+          "spotify": "Spotify",
+          "discogs": "Discogs"
+        },
+        "folder_selection": "Ordnerauswahl",
+        "progress": "Fortschritt"
+      },
+      "genre_editor": {
+        "title": "Genre-Zuordnungseditor",
+        "tabs": {
+          "genres": "Genres",
+          "labels": "Labels",
+          "artists": "Künstler"
+        },
+        "buttons": {
+          "add": "Hinzufügen",
+          "delete": "Löschen",
+          "edit": "Bearbeiten",
+          "save": "Speichern",
+          "close": "Schließen"
+        },
+        "columns": {
+          "source_genre": "Quell-Genre",
+          "mapped_genre": "Zugeordnetes Genre"
+        },
+        "dialog": {
+          "title": "Zuordnungseditor",
+          "source_label": "Quell-Genre",
+          "mapped_label": "Zugeordnetes Genre",
+          "buttons": {
+            "ok": "OK",
+            "cancel": "Abbrechen"
+          }
+        }
+      },
+      "buttons": {
+        "browse": "Durchsuchen",
+        "init_api": "APIs initialisieren",
+        "load_keys": "API-Schlüssel laden",
+        "edit_genres": "Genres bearbeiten",
+        "start_processing": "Verarbeitung starten",
+        "cancel": "Abbrechen",
+        "clear_log": "Log löschen",
+        "export_logs": "Logs exportieren"
+      },
+      "status": {
+        "waiting": "Warten...",
+        "processing_file": "Datei {0}/{1}",
+        "processing_complete": "Verarbeitung abgeschlossen!"
+      },
+      "dropzone": {
+        "hint": "Dateien oder Ordner hier ablegen"
+      }
+    },
+    "api": {
+      "initialization": {
+        "start": "APIs werden initialisiert...",
+        "success": {
+          "musicbrainz": "MusicBrainz erfolgreich initialisiert"
+        },
+        "complete": "Konfiguration abgeschlossen",
+        "success_final": "✅ Initialisierung erfolgreich abgeschlossen!",
+        "connection": {
+          "musicbrainz": "Verbindung zu MusicBrainz wird hergestellt...",
+          "spotify": "Verbindung zu Spotify wird hergestellt...",
+          "discogs": "Verbindung zu Discogs wird hergestellt..."
+        }
+      }
+    },
+    "processor": {
+      "progress": {
+        "start": "🔍 Dateien werden analysiert - {0} Dateien gefunden",
+        "processing_album": "\n📀 Album wird verarbeitet: {0}",
+        "file_update": "[{0}/{1}] Aktualisiere {2}",
+        "processor_ready": "Prozessor bereit",
+        "processing_directory": "📁 Verarbeite Verzeichnis: {0}"
+      },
+      "analysis": {
+        "file_grouping": "🔍 Dateien werden nach Album/EP gruppiert...",
+        "creating_processor": "🔍 MP3-Prozessor wird erstellt...",
+        "processor_ready": "✅ MP3-Prozessor erfolgreich erstellt"
+      },
+      "summary": {
+        "header": "📊 Aktualisierungsübersicht:",
+        "source": "  • Verwendete Quelle: {0}",
+        "files": "  • Verarbeitete Dateien: {0}",
+        "updates": "  • Aktualisierte Dateien: {0}",
+        "labels": "  • Gefundene Labels ({0} Aktualisierungen):",
+        "catalogs": "  • Gefundene Katalognummern ({0} Aktualisierungen):",
+        "genres": "  • Aktualisierte Genres ({0} Aktualisierungen):"
+      },
+      "statistics": {
+        "header": "📈 Statistiken:",
+        "not_found": "  • Nicht gefundene Dateien: {0}",
+        "errors": "  • Fehler: {0}"
+      }
+    },
+    "messages": {
+      "error": {
+        "api_config": "Konfigurationsfehler",
+        "api_required": "Mindestens ein Dienst muss aktiviert sein.",
+        "folder_not_found": "Ausgewählter Ordner existiert nicht.",
+        "initialize_first": "Bitte zuerst APIs initialisieren.",
+        "mp3_only": "❌ Datei muss im MP3-Format sein"
+      },
+      "success": {
+        "config_loaded": "Konfiguration erfolgreich geladen",
+        "processing_complete": "✅ Verarbeitung abgeschlossen!"
+      }
+    },
+    "logs": {
+      "folder": {
+        "added": "✅ Ordner hinzugefügt: {0}"
+      },
+      "processing": {
+        "start": "Verarbeitung wird gestartet...",
+        "analyzing": "Analyse läuft..."
+      },
+      "export": {
+        "success": "Export erfolgreich"
+      }
+    }
+  }

@@ -125,6 +125,9 @@
     "processing": {
       "start": "Iniciando procesamiento...",
       "analyzing": "Análisis en curso..."
+    },
+    "export":{
+      "success": "Exportación con éxito"
     }
   }
 }

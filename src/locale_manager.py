@@ -1,10 +1,10 @@
-# locales/locale_manager.py
+# i18n/locale_manager.py
 import json
 import os
 from typing import Dict, Optional, Any
 
 class LocaleManager:
-    def __init__(self, locales_dir: str = "locales"):
+    def __init__(self, locales_dir: str = "i18n"):
         self.locales_dir = locales_dir
         self.current_locale = "fr"  # Langue par défaut
         self.translations: Dict[str, Dict[str, Any]] = {}
@@ -19,6 +19,7 @@ class LocaleManager:
         """Charge la liste des langues disponibles."""
         default_locales = {
             "fr": "Français",
+            "de": "Deutsch",
             "en": "English",
             "es": "Español",
             "it": "Italiano",

@@ -1,6 +1,17 @@
+# Interface graphique
+tkinter>=8.6
 tkinterdnd2>=0.3.0
+
+# Traitement des fichiers audio
 mutagen>=1.45.1
+
+# APIs musicales
 spotipy>=2.19.0
 python3-discogs-client>=2.5.0
 musicbrainzngs>=0.7.1
 requests>=2.26.0
+
+# Utilitaires
+python-dateutil>=2.8.2
+pathlib>=1.0.1
+typing-extensions>=4.0.0

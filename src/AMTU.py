@@ -17,9 +17,10 @@ from tkinterdnd2 import *  # Pour le drag & drop
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from genre_manager import GenreManager
 from models import TrackMetadata
-from locales.locale_manager import LocaleManager
+from locale_manager import LocaleManager
 import json
 from pathlib import Path
+from config import GENRE_MAPPINGS_FILE
 import logging
 from dataclasses import dataclass
 import requests
@@ -45,9 +46,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Définitions de chemins par :
+from config import (
+    ROOT_DIR, CONFIG_DIR, LOGS_DIR, I18N_DIR, 
+    GENRE_MAPPINGS_FILE, API_CONFIG_FILE, API_KEYS_FILE
+)
+
+# S'assurer que les dossiers existent
+for directory in [CONFIG_DIR, LOGS_DIR, I18N_DIR]:
+    directory.mkdir(exist_ok=True)
+
+# Définition des chemins des fichiers de configuration
+GENRE_MAPPINGS_FILE = CONFIG_DIR / 'genre_mappings.json'
+CONFIG_FILE = CONFIG_DIR / 'set_api_config.json'
+API_KEYS_FILE = CONFIG_DIR / 'api_keys.json'
+
 class ConfigManager:
     """Gère la configuration et la validation des APIs."""
-    CONFIG_FILE = "set_api_config.json"
+    CONFIG_FILE = API_CONFIG_FILE
 
     def __init__(self, locale_manager):
         self.locale_manager = locale_manager
@@ -75,12 +91,15 @@ class ConfigManager:
             except Exception as e:
                 logger.error(self.locale_manager.get_text("messages.error.config_loading", None, str(e)))
 
+            # Sauvegarder la configuration par défaut si le fichier n'existe pas
+            with open(self.CONFIG_FILE, 'w') as f:
+                json.dump(default_config, f, indent=4)
+
             return default_config
 
     def load_api_keys(self):
         try:
-            with open('api_keys.json', 'r') as f:
-                return json.load(f)
+            return API_KEYS_FILE.read_text()
         except FileNotFoundError:
             return {}
 
@@ -115,13 +134,16 @@ class ConfigManager:
 
     def is_service_enabled(self, service_name: str) -> bool:
         """Vérifie si un service est activé."""
-        return self.config.get('services', {}).get(service_name, False)
+        enabled = self.config.get('services', {}).get(service_name, False)
+        logger.info(f"Vérification service {service_name}: {'activé' if enabled else 'désactivé'}")
+        return enabled
 
     def set_service_state(self, service_name: str, enabled: bool) -> None:
         """Active ou désactive un service."""
         if 'services' not in self.config:
             self.config['services'] = {}
         self.config['services'][service_name] = enabled
+        logger.info(f"Service {service_name} {'activé' if enabled else 'désactivé'}")
         self.save_config(self.config)
 
     def export_config(self, filename: str) -> None:
@@ -252,12 +274,20 @@ class APIManager:
         best_result = None
         enabled_services = self.config.get('services', {})
 
-        for service_name, search_func, display_name in [
+        # Debug des services activés
+        logger.info(f"Services activés: {enabled_services}")
+
+        # Liste des services à vérifier avec leur fonction correspondante
+        services = [
             ('musicbrainz', self._search_musicbrainz, "MusicBrainz"),
             ('spotify', self._search_spotify, "Spotify"),
             ('discogs', self._search_discogs, "Discogs")
-        ]:
+        ]
+
+        for service_name, search_func, display_name in services:
+            # Vérifier explicitement si le service est activé
             if not enabled_services.get(service_name, False):
+                logger.info(f"Service {display_name} désactivé, ignoré")
                 continue
 
             logger.info(f"Recherche sur {display_name}...")
@@ -706,7 +736,7 @@ class MP3Processor:
     def _write_error_log(self):
         """Écrit les erreurs dans un fichier CSV."""
         try:
-            with open('error_log.csv', 'w', newline='', encoding='utf-8') as f:
+            with open(LOGS_DIR / 'error_log.csv', 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(
                     f, fieldnames=['file', 'title', 'artist', 'album', 'error'])
                 writer.writeheader()
@@ -1091,7 +1121,7 @@ class MetadataManagerGUI:
     def __init__(self):
         self.root = TkinterDnD.Tk()
         self.root.minsize(800, 600)
-        self.locale_manager = LocaleManager()
+        self.locale_manager = LocaleManager(I18N_DIR)
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
 
@@ -1396,7 +1426,10 @@ class MetadataManagerGUI:
                 }
             }
 
+            logger.info(f"État des services lors de l'initialisation: {config['services']}")
+
             enabled_services = [name for name, enabled in config['services'].items() if enabled]
+            logger.info(f"Services activés: {enabled_services}")
             if not enabled_services:
                 messagebox.showerror(
                     self.locale_manager.get_text("messages.error.api_config"),
@@ -1607,7 +1640,7 @@ class MetadataManagerGUI:
         """Exporte les logs dans un fichier."""
         try:
             # Crée le dossier logs s'il n'existe pas
-            logs_dir = Path("logs")
+            logs_dir = LOGS_DIR
             logs_dir.mkdir(exist_ok=True)
 
             # Timestamp pour le nom du fichier
@@ -1649,6 +1682,9 @@ class GenreMappingEditor:
         self.window.title(self.locale_manager.get_text("gui.genre_editor.title"))
         self.window.geometry("800x600")
         self.window.minsize(800, 600)
+
+        # Définir le chemin du fichier de configuration
+        self.config_file = Path(__file__).parent.parent / 'config' / 'genre_mappings.json'
 
         # Définition des en-têtes pour chaque type de mapping
         self.headers = {
@@ -1776,14 +1812,26 @@ class GenreMappingEditor:
 
     def load_mappings(self):
         try:
-            with open('genre_mappings.json', 'r', encoding='utf-8') as f:
-                mappings = json.load(f)
+            # Utiliser self.config_file au lieu de config_path
+            if not self.config_file.exists():
+                # Créer un fichier de mapping par défaut si nécessaire
+                default_mappings = {
+                    "genres": {},
+                    "labels": {},
+                    "artists": {}
+                }
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(default_mappings, f, indent=2, ensure_ascii=False)
+                mappings = default_mappings
+            else:
+                # Charger les mappings existants
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    mappings = json.load(f)
 
             # Chargement des données dans chaque Treeview
             for mapping_type in ['genres', 'labels', 'artists']:
                 tree = getattr(self, f"{mapping_type}_tree")
                 tree.delete(*tree.get_children())
-
                 for source, mapped in mappings.get(mapping_type, {}).items():
                     tree.insert('', 'end', values=(source, mapped))
 
@@ -1793,7 +1841,6 @@ class GenreMappingEditor:
     def save_mappings(self):
         try:
             mappings = {}
-
             # Récupération des données de chaque Treeview
             for mapping_type in ['genres', 'labels', 'artists']:
                 tree = getattr(self, f"{mapping_type}_tree")
@@ -1805,12 +1852,12 @@ class GenreMappingEditor:
 
                 mappings[mapping_type] = mapping_dict
 
-            # Sauvegarde dans le fichier
-            with open('genre_mappings.json', 'w', encoding='utf-8') as f:
+            # Utiliser GENRE_MAPPINGS_FILE de config.py
+            with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(mappings, f, indent=2, ensure_ascii=False)
-
+            
             messagebox.showinfo("Succès", "Mappings sauvegardés avec succès!")
-
+        
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde: {str(e)}")
 

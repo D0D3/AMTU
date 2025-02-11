@@ -1,6 +1,6 @@
 # AMTU (Apple Music Tag Updater)
 
-[Version en français](README.md) | [English version](README.en.md) | [Versione italiana](README.it.md) | [Versión española](README.es.md) | [Versão em português](README.pt.md)
+[Version en français](../README.md) | [English version](README.en.md) | [Versione italiana](README.it.md) | [Versión española](README.es.md) | [Versão em português](README.pt.md) | [Deutsch Version](README.de.md)
 
 AMTU es una herramienta gráfica Python para actualizar automáticamente las etiquetas de archivos MP3 utilizando múltiples fuentes de datos musicales (MusicBrainz, Spotify, Discogs) para una mejor organización de tu biblioteca de Apple Music.
 
@@ -35,6 +35,7 @@ AMTU está disponible en los siguientes idiomas:
 - 🇮🇹 Italiano
 - 🇪🇸 Español
 - 🇵🇹 Portugués
+- 🇩🇪 Deutsch
 
 Características del soporte multilingüe:
 - Interfaz de usuario completamente traducida
@@ -168,14 +169,15 @@ Para acceder al editor:
     }
   }
   ```
-- `locales/`: Carpeta que contiene los archivos de traducción
+- `i18n/`: Carpeta que contiene los archivos de traducción
   ```
-  locales/
+  i18n/
   ├── en.json    # Inglés
   ├── fr.json    # Francés
   ├── it.json    # Italiano
   ├── es.json    # Español
-  └── pt.json    # Portugués
+  ├── pt.json    # Portugués
+  └── de.json    # Alemán
   ```
 
 ## 🔨 Para Desarrolladores

@@ -1,28 +1,31 @@
-# Environnements locaux
-.env
-.venv
-
-# API keys et config
-api_keys.json
-set_api_config.json
-*.cache
-
-# Logs
-logs/
-olds/
-*.log
-*.csv
-*.old
-
-# Backups
-baks/
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+.cache
+
+# Backups
+baks/
+olds/
+
+# Logs
+logs/
+*.log
+*.csv
+*.old
+logs/error_log.csv
+logs/not_found_log.csv
+
+# Environnements locaux
 .env
+.venv
+env/
 venv/
+
+# Configuration locale
+config/api_keys.json
+config/set_api_config.json
+*.cache
 
 # OS
 .DS_Store
